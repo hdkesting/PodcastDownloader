@@ -31,7 +31,8 @@ namespace PodcastDownloader
             // does the file exist?
             if (File.Exists(this.configPath))
             {
-                this.currentConfig = JsonConvert.DeserializeObject<FeedConfig>(this.configPath);
+                var json = File.ReadAllText(this.configPath);
+                this.currentConfig = JsonConvert.DeserializeObject<FeedConfig>(json);
             }
             else
             {
@@ -53,7 +54,7 @@ namespace PodcastDownloader
 
             lock (SaveLock)
             {
-                var json = JsonConvert.SerializeObject(this.currentConfig);
+                var json = JsonConvert.SerializeObject(this.currentConfig, Formatting.Indented);
                 File.WriteAllText(this.configPath, json);
             }
         }

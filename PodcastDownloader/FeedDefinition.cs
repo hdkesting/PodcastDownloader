@@ -27,5 +27,13 @@ namespace PodcastDownloader
         /// The latest download.
         /// </value>
         public DateTime LatestDownload { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to ignore this feed.
+        /// </summary>
+        /// <value>
+        ///   <c>true</c> if disabled; otherwise, <c>false</c>.
+        /// </value>
+        public bool Disabled { get; set; }
     }
 }

@@ -1,12 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace PodcastDownloader
 {
-    class Program
+    public static class Program
     {
         static void Main(string[] args)
         {
@@ -14,7 +12,12 @@ namespace PodcastDownloader
             var config = ConfigManager.Instance.GetCurrentConfig();
 
             // process feeds
-            Parallel.ForEach(config.Feeds, ProcessFeed);
+            Parallel.ForEach(config.Feeds.Where(f => !f.Disabled), ProcessFeed);
+
+#if DEBUG
+            Console.Write("Press return to exit >");
+            Console.ReadLine();
+#endif
         }
 
         private static void ProcessFeed(FeedDefinition feed)
