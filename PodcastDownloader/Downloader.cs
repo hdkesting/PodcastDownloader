@@ -48,10 +48,21 @@ namespace PodcastDownloader
             {
                 // might happen because of url encoding in url
                 //     <atom:link href="http://www.pwop.com%2ffeed.aspx%3fshow%3dHanselminutes" rel="self" type="application/rss+xml" />
-                podcast = TryDecodingUrl(this.feed.Url);
+                try
+                {
+                    podcast = TryDecodingUrl(this.feed.Url);
+                }
+                catch (Exception ex2)
+                {
+                    this.feed.LatestError = ex2.Message;
+                    WriteException(ex2);
+                    return;
+                }
+
                 if (podcast == null)
                 {
                     Console.WriteLine($"Error loading podcast {this.feed.Name}.");
+                    this.feed.LatestError = ex.Message;
                     WriteException(ex);
                     return;
                 }
@@ -72,6 +83,7 @@ namespace PodcastDownloader
             }
 
             this.feed.LatestDownload = latest;
+            this.feed.LatestError = String.Empty;
             ConfigManager.Instance.SaveCurrentConfig();
         }
 

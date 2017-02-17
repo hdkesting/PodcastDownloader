@@ -35,5 +35,7 @@ namespace PodcastDownloader
         ///   <c>true</c> if disabled; otherwise, <c>false</c>.
         /// </value>
         public bool Disabled { get; set; }
+
+        public string LatestError { get; set; }
     }
 }
