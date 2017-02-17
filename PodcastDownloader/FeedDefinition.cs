@@ -26,7 +26,7 @@ namespace PodcastDownloader
         /// <value>
         /// The latest download.
         /// </value>
-        public DateTime LatestDownload { get; set; }
+        public DateTimeOffset LatestDownload { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether to ignore this feed.

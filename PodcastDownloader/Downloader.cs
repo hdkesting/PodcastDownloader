@@ -1,11 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.ServiceModel.Syndication;
-using System.Text;
-using System.Threading.Tasks;
 using System.Web;
 using System.Xml;
 using System.Xml.Linq;
@@ -15,6 +12,7 @@ namespace PodcastDownloader
     class Downloader
     {
         private readonly FeedDefinition feed;
+        private readonly string basepath;
 
         public Downloader(FeedDefinition feed)
         {
@@ -22,6 +20,7 @@ namespace PodcastDownloader
 
             Console.WriteLine($"Using feed {feed.Name}.");
             this.feed = feed;
+            this.basepath = ConfigManager.Instance.GetCurrentConfig().BasePath;
         }
 
         public void Process()
@@ -47,7 +46,7 @@ namespace PodcastDownloader
             }
             catch (Exception ex)
             {
-                // TODO might happen because of url encoding in url
+                // might happen because of url encoding in url
                 //     <atom:link href="http://www.pwop.com%2ffeed.aspx%3fshow%3dHanselminutes" rel="self" type="application/rss+xml" />
                 podcast = TryDecodingUrl(this.feed.Url);
                 if (podcast == null)
@@ -58,11 +57,50 @@ namespace PodcastDownloader
                 }
             }
 
+            DateTimeOffset latest = this.feed.LatestDownload;
             foreach (var item in podcast.Items.Where(it => it.PublishDate > this.feed.LatestDownload))
             {
                 foreach (var link in item.Links.Where(l => l.RelationshipType == "enclosure"))
                 {
-                    Console.WriteLine(link.Uri);
+                    DownloadFile(link.Uri);
+                }
+
+                if (item.PublishDate > latest)
+                {
+                    latest = item.PublishDate;
+                }
+            }
+
+            this.feed.LatestDownload = latest;
+            ConfigManager.Instance.SaveCurrentConfig();
+        }
+
+        private void DownloadFile(Uri linkUri)
+        {
+            var folder = Path.Combine(this.basepath, this.feed.Name);
+            if (!Directory.Exists(folder))
+            {
+                Directory.CreateDirectory(folder);
+            }
+
+            var file = linkUri.Segments.Last();
+            var path = Path.Combine(folder, file);
+
+            if (File.Exists(path))
+            {
+                Console.WriteLine($"File already downloaded: {file}.");
+            }
+            else
+            {
+                var request = WebRequest.Create(linkUri);
+                using (var response = request.GetResponse())
+                {
+                    using (var wrt = File.OpenWrite(path))
+                    {
+                        response.GetResponseStream().CopyTo(wrt);
+                    }
+
+                    Console.WriteLine($"Create file {path}.");
                 }
             }
         }
