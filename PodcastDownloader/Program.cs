@@ -22,8 +22,10 @@ namespace PodcastDownloader
 
         private static void ProcessFeed(FeedDefinition feed)
         {
-            var dl = new Downloader(feed);
-            dl.Process();
+            using (var dl = new Downloader(feed))
+            {
+                dl.Process();
+            }
         }
     }
 }

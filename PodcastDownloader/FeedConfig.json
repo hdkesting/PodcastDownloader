@@ -1,0 +1,68 @@
+{
+  "BasePath": "D:\\Downloads\\Podcasts\\Feeds",
+  "Feeds": [
+    {
+      "Name": "dotnetRocks",
+      "Url": "http://www.pwop.com/feed.aspx?show=dotnetrocks&filetype=master",
+      "LatestDownload": "2017-02-16T00:00:00-04:00",
+      "Disabled": false,
+      "LatestError": ""
+    },
+    {
+      "Name": "NuTech",
+      "Url": "http://feeds.podtrac.com/lO1gA67aZXmU",
+      "LatestDownload": "2017-02-17T14:21:17+00:00",
+      "Disabled": false,
+      "LatestError": ""
+    },
+    {
+      "Name": "Hanselminutes",
+      "Url": "http://feeds.feedburner.com/HanselminutesCompleteMP3",
+      "LatestDownload": "2017-02-17T00:00:00-04:00",
+      "Disabled": false,
+      "LatestError": ""
+    },
+    {
+      "Name": "Stackoverflow",
+      "Url": "http://blog.stackoverflow.com/feed",
+      "LatestDownload": "2017-02-15T00:00:00+00:00",
+      "Disabled": false,
+      "LatestError": ""
+    },
+    {
+      "Name": "Herding Code",
+      "Url": "http://feeds2.feedburner.com/HerdingCode",
+      "LatestDownload": "2017-02-17T06:53:23+00:00",
+      "Disabled": false,
+      "LatestError": ""
+    },
+    {
+      "Name": "NPR Technology",
+      "Url": "http://www.kqed.org/rss/questaudio.xml",
+      "LatestDownload": "2017-02-01T00:00:00+00:00",
+      "Disabled": false,
+      "LatestError": ""
+    },
+    {
+      "Name": "Brainstuff",
+      "Url": "http://www.howstuffworks.com/podcasts/brainstuff.rss",
+      "LatestDownload": "2017-02-15T03:00:00-05:00",
+      "Disabled": false,
+      "LatestError": ""
+    },
+    {
+      "Name": "Science Friday",
+      "Url": "http://www.sciencefriday.com/audio/scifriaudio.xml",
+      "LatestDownload": "2017-02-10T19:00:00+00:00",
+      "Disabled": false,
+      "LatestError": ""
+    },
+    {
+      "Name": "No Such Thing As A Fish",
+      "Url": "https://audioboom.com/channels/2399216.rss",
+      "LatestDownload": "2017-02-10T16:50:00+00:00",
+      "Disabled": false,
+      "LatestError": ""
+    }
+  ]
+}

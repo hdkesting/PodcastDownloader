@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -9,18 +10,27 @@ using System.Xml.Linq;
 
 namespace PodcastDownloader
 {
-    class Downloader
+    internal sealed class Downloader : IDisposable
     {
         private readonly FeedDefinition feed;
-        private readonly string basepath;
+        private readonly string baseDownloadPath;
+        private readonly TextWriter logger;
 
         public Downloader(FeedDefinition feed)
         {
             if (feed == null) throw new ArgumentNullException(nameof(feed));
 
-            Console.WriteLine($"Using feed {feed.Name}.");
+            var logpath = Path.Combine(Path.GetDirectoryName(GetType().Assembly.Location), "Logging");
+            if (!Directory.Exists(logpath))
+            {
+                Directory.CreateDirectory(logpath);
+            }
+
+            logpath = Path.Combine(logpath, feed.Name + ".txt");
+            logger = File.AppendText(logpath);
+            logger.WriteLine(new string('=', 20) + " " + DateTime.Now.ToString(CultureInfo.CurrentCulture));
             this.feed = feed;
-            this.basepath = ConfigManager.Instance.GetCurrentConfig().BasePath;
+            this.baseDownloadPath = ConfigManager.Instance.GetCurrentConfig().BasePath;
         }
 
         public void Process()
@@ -39,7 +49,7 @@ namespace PodcastDownloader
 
                     if (podcast == null)
                     {
-                        Console.WriteLine($"No podcast found at {this.feed.Url}.");
+                        logger.WriteLine($"No podcast found at {this.feed.Url}.");
                         return;
                     }
                 }
@@ -61,7 +71,7 @@ namespace PodcastDownloader
 
                 if (podcast == null)
                 {
-                    Console.WriteLine($"Error loading podcast {this.feed.Name}.");
+                    logger.WriteLine($"Error loading podcast {this.feed.Name}.");
                     this.feed.LatestError = ex.Message;
                     WriteException(ex);
                     return;
@@ -73,7 +83,7 @@ namespace PodcastDownloader
             {
                 foreach (var link in item.Links.Where(l => l.RelationshipType == "enclosure"))
                 {
-                    DownloadFile(link.Uri);
+                    DownloadFile(link.Uri, item.PublishDate);
                 }
 
                 if (item.PublishDate > latest)
@@ -87,9 +97,9 @@ namespace PodcastDownloader
             ConfigManager.Instance.SaveCurrentConfig();
         }
 
-        private void DownloadFile(Uri linkUri)
+        private void DownloadFile(Uri linkUri, DateTimeOffset pubdate)
         {
-            var folder = Path.Combine(this.basepath, this.feed.Name);
+            var folder = Path.Combine(this.baseDownloadPath, this.feed.Name);
             if (!Directory.Exists(folder))
             {
                 Directory.CreateDirectory(folder);
@@ -100,7 +110,7 @@ namespace PodcastDownloader
 
             if (File.Exists(path))
             {
-                Console.WriteLine($"File already downloaded: {file}.");
+                logger.WriteLine($"File already downloaded: {file}.");
             }
             else
             {
@@ -112,7 +122,10 @@ namespace PodcastDownloader
                         response.GetResponseStream().CopyTo(wrt);
                     }
 
-                    Console.WriteLine($"Create file {path}.");
+                    var fi = new FileInfo(path);
+                    fi.CreationTimeUtc = pubdate.UtcDateTime;
+
+                    logger.WriteLine($"Create file {path}.");
                 }
             }
         }
@@ -146,7 +159,7 @@ namespace PodcastDownloader
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Fixing feed {this.feed.Name} didn't work.");
+                logger.WriteLine($"Fixing feed {this.feed.Name} didn't work.");
                 WriteException(ex);
                 return null;
             }
@@ -156,10 +169,18 @@ namespace PodcastDownloader
         {
             while (ex != null)
             {
-                Console.WriteLine(ex.Message);
-                Console.WriteLine(new String('-', 20));
+                logger.WriteLine(ex.Message);
+                logger.WriteLine(new String('-', 20));
                 ex = ex.InnerException;
             }
+        }
+
+        public void Dispose()
+        {
+            logger.WriteLine(DateTime.Now.ToString(CultureInfo.CurrentCulture));
+            logger.Flush();
+            logger.Close();
+            logger.Dispose();
         }
     }
 }
