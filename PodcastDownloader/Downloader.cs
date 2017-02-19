@@ -79,7 +79,7 @@ namespace PodcastDownloader
             }
 
             DateTimeOffset latest = this.feed.LatestDownload;
-            foreach (var item in podcast.Items.Where(it => it.PublishDate > this.feed.LatestDownload))
+            foreach (var item in podcast.Items.Where(it => it.PublishDate > this.feed.LatestDownload).OrderBy(it => it.PublishDate))
             {
                 foreach (var link in item.Links.Where(l => l.RelationshipType == "enclosure"))
                 {
@@ -177,7 +177,7 @@ namespace PodcastDownloader
 
         public void Dispose()
         {
-            logger.WriteLine(DateTime.Now.ToString(CultureInfo.CurrentCulture));
+            logger.WriteLine(DateTime.Now.ToString(CultureInfo.CurrentCulture) + " " + new string('=', 20));
             logger.Flush();
             logger.Close();
             logger.Dispose();
