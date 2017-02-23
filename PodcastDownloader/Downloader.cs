@@ -20,17 +20,15 @@ namespace PodcastDownloader
         {
             if (feed == null) throw new ArgumentNullException(nameof(feed));
 
-            var logpath = Path.Combine(Path.GetDirectoryName(GetType().Assembly.Location), "Logging");
-            if (!Directory.Exists(logpath))
-            {
-                Directory.CreateDirectory(logpath);
-            }
+            this.feed = feed;
+            this.baseDownloadPath = ConfigManager.Instance.GetCurrentConfig().BasePath;
+
+            var logpath = Path.Combine(this.baseDownloadPath, "__Logging");
+            EnsureFolderExists(logpath);
 
             logpath = Path.Combine(logpath, feed.Name + ".txt");
             logger = File.AppendText(logpath);
             logger.WriteLine(new string('=', 20) + " " + DateTime.Now.ToString(CultureInfo.CurrentCulture));
-            this.feed = feed;
-            this.baseDownloadPath = ConfigManager.Instance.GetCurrentConfig().BasePath;
         }
 
         public void Process()
@@ -100,17 +98,14 @@ namespace PodcastDownloader
         private void DownloadFile(Uri linkUri, DateTimeOffset pubdate)
         {
             var folder = Path.Combine(this.baseDownloadPath, this.feed.Name);
-            if (!Directory.Exists(folder))
-            {
-                Directory.CreateDirectory(folder);
-            }
+            EnsureFolderExists(folder);
 
             var file = linkUri.Segments.Last();
             var path = Path.Combine(folder, file);
 
             if (File.Exists(path))
             {
-                logger.WriteLine($"File already downloaded: {file}.");
+                logger.WriteLine($"File already downloaded: {file}, skipping.");
             }
             else
             {
@@ -125,8 +120,16 @@ namespace PodcastDownloader
                     var fi = new FileInfo(path);
                     fi.CreationTimeUtc = pubdate.UtcDateTime;
 
-                    logger.WriteLine($"Create file {path}.");
+                    logger.WriteLine($"Downloaded file {path}.");
                 }
+            }
+        }
+
+        private void EnsureFolderExists(string folderName)
+        {
+            if (!Directory.Exists(folderName))
+            {
+                Directory.CreateDirectory(folderName);
             }
         }
 
@@ -170,7 +173,11 @@ namespace PodcastDownloader
             while (ex != null)
             {
                 logger.WriteLine(ex.Message);
-                logger.WriteLine(new String('-', 20));
+                if (ex.InnerException != null)
+                {
+                    logger.WriteLine(new String('-', 20));
+                }
+
                 ex = ex.InnerException;
             }
         }
