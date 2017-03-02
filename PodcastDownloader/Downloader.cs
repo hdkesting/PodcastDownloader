@@ -109,12 +109,13 @@ namespace PodcastDownloader
             }
             else
             {
+                Console.WriteLine($"{this.feed.Name}: {file}");
                 var request = WebRequest.Create(linkUri);
                 using (var response = request.GetResponse())
                 {
                     using (var wrt = File.OpenWrite(path))
                     {
-                        response.GetResponseStream().CopyTo(wrt);
+                        response.GetResponseStream()?.CopyTo(wrt);
                     }
 
                     var fi = new FileInfo(path);
