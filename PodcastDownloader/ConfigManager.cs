@@ -15,7 +15,7 @@ namespace PodcastDownloader
 
         private ConfigManager()
         {
-            configPath = Path.Combine(Path.GetDirectoryName(this.GetType().Assembly.Location), ConfigName);
+            configPath = Path.Combine(System.Configuration.ConfigurationManager.AppSettings["BasePath"], ConfigName);
         }
 
         public static ConfigManager Instance => _instance ?? (_instance = new ConfigManager());
