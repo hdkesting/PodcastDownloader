@@ -14,14 +14,15 @@ namespace PodcastDownloader
     {
         private readonly FeedDefinition feed;
         private readonly string baseDownloadPath;
+        private readonly bool useSeparateFeedFolder;
         private readonly TextWriter logger;
 
         public Downloader(FeedDefinition feed)
         {
-            if (feed == null) throw new ArgumentNullException(nameof(feed));
+            this.feed = feed ?? throw new ArgumentNullException(nameof(feed));
 
-            this.feed = feed;
             this.baseDownloadPath = ConfigManager.Instance.GetCurrentConfig().BasePath;
+            this.useSeparateFeedFolder = ConfigManager.Instance.GetCurrentConfig().UseSeparateFolders;
 
             var logpath = Path.Combine(this.baseDownloadPath, "__Logging");
             EnsureFolderExists(logpath);
@@ -97,10 +98,25 @@ namespace PodcastDownloader
 
         private void DownloadFile(Uri linkUri, DateTimeOffset pubdate)
         {
-            var folder = Path.Combine(this.baseDownloadPath, this.feed.Name);
+            var folder = this.baseDownloadPath;
+            if (this.useSeparateFeedFolder)
+            {
+                folder = Path.Combine(folder, this.feed.Name);
+            }
+            else
+            {
+                folder = Path.Combine(folder, "__Files");
+            }
+
             EnsureFolderExists(folder);
 
             var file = linkUri.Segments.Last();
+            if (!this.useSeparateFeedFolder)
+            {
+                // not a separate folder, so prefix with feed name
+                file = this.feed.Name + " → " + file;
+            }
+
             var path = Path.Combine(folder, file);
 
             if (File.Exists(path))

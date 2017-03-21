@@ -15,7 +15,14 @@ namespace PodcastDownloader
 
         private ConfigManager()
         {
-            configPath = Path.Combine(System.Configuration.ConfigurationManager.AppSettings["BasePath"], ConfigName);
+            var basePath = System.Configuration.ConfigurationManager.AppSettings["BasePath"];
+            if (string.IsNullOrWhiteSpace(basePath))
+            {
+                basePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), "Feeds");
+                System.Configuration.ConfigurationManager.AppSettings["BasePath"] = basePath;
+            }
+
+            configPath = Path.Combine(basePath, ConfigName);
         }
 
         public static ConfigManager Instance => _instance ?? (_instance = new ConfigManager());
@@ -61,7 +68,7 @@ namespace PodcastDownloader
 
         private void InitializeConfig(FeedConfig config)
         {
-            config.BasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), "Feeds");
+            config.BasePath = System.Configuration.ConfigurationManager.AppSettings["BasePath"];
             config.Feeds.Add(new FeedDefinition
             {
                 Name = "dotnetrocks",
