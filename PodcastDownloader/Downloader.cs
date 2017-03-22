@@ -93,7 +93,6 @@ namespace PodcastDownloader
 
             this.feed.LatestDownload = latest;
             this.feed.LatestError = String.Empty;
-            ConfigManager.Instance.SaveCurrentConfig();
         }
 
         private void DownloadFile(Uri linkUri, DateTimeOffset pubdate)
@@ -114,7 +113,7 @@ namespace PodcastDownloader
             if (!this.useSeparateFeedFolder)
             {
                 // not a separate folder, so prefix with feed name
-                file = this.feed.Name + " → " + file;
+                file = this.feed.Name + " ◆ " + file;
             }
 
             var path = Path.Combine(folder, file);

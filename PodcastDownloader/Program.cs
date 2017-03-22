@@ -34,6 +34,10 @@ namespace PodcastDownloader
                 Console.Write("Press return to exit >");
                 Console.ReadLine();
             }
+            finally
+            {
+                ConfigManager.Instance.SaveCurrentConfig();
+            }
         }
 
         private static void ProcessFeed(FeedDefinition feed)
