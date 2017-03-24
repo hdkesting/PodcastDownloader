@@ -14,7 +14,12 @@ namespace PodcastDownloader
                 var config = ConfigManager.Instance.GetCurrentConfig();
 
                 // process feeds
-                Parallel.ForEach(config.Feeds.Where(f => !f.Disabled), ProcessFeed);
+                // Parallel.ForEach(config.Feeds.Where(f => !f.Disabled), ProcessFeed);
+                foreach(var feed in config.Feeds.Where(f => !f.Disabled))
+                {
+                    ProcessFeed(feed);
+                    ConfigManager.Instance.SaveCurrentConfig();
+                }
 
 #if DEBUG
                 Console.Write("Press return to exit >");
