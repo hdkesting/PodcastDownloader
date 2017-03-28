@@ -125,18 +125,29 @@ namespace PodcastDownloader
             else
             {
                 Console.WriteLine($"{this.feed.Name}: {file}");
-                var request = WebRequest.Create(linkUri);
-                using (var response = request.GetResponse())
+
+                try
                 {
-                    using (var wrt = File.OpenWrite(path))
+                    var request = WebRequest.Create(linkUri);
+                    using (var response = request.GetResponse())
                     {
-                        response.GetResponseStream()?.CopyTo(wrt);
+                        using (var wrt = File.OpenWrite(path))
+                        {
+                            response.GetResponseStream()?.CopyTo(wrt);
+                        }
+
+                        var fi = new FileInfo(path);
+                        fi.CreationTimeUtc = pubdate.UtcDateTime;
+
+                        logger.WriteLine($"Downloaded file {path}.");
                     }
 
-                    var fi = new FileInfo(path);
-                    fi.CreationTimeUtc = pubdate.UtcDateTime;
-
-                    logger.WriteLine($"Downloaded file {path}.");
+                }
+                catch (Exception)
+                {
+                    // remove possibly partially downloaded file
+                    File.Delete(path);
+                    throw;
                 }
             }
         }
