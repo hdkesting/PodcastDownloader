@@ -77,6 +77,8 @@ namespace PodcastDownloader
                 }
             }
 
+            this.feed.Name = podcast.Title.Text;
+
             DateTimeOffset latest = this.feed.LatestDownload;
             foreach (var item in podcast.Items.Where(it => it.PublishDate > this.feed.LatestDownload).OrderBy(it => it.PublishDate))
             {
