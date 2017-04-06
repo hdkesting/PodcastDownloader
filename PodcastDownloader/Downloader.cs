@@ -27,7 +27,8 @@ namespace PodcastDownloader
             var logpath = Path.Combine(this.baseDownloadPath, "__Logging");
             EnsureFolderExists(logpath);
 
-            logpath = Path.Combine(logpath, feed.Name + ".txt");
+            logpath = Path.Combine(logpath, CleanupFilename(feed.Name) + ".txt");
+
             logger = File.AppendText(logpath);
             logger.WriteLine(new string('=', 20) + " " + DateTime.Now.ToString(CultureInfo.CurrentCulture));
         }
@@ -118,6 +119,8 @@ namespace PodcastDownloader
                 file = this.feed.Name + " ◆ " + file;
             }
 
+            file = CleanupFilename(file);
+
             var path = Path.Combine(folder, file);
 
             if (File.Exists(path))
@@ -152,6 +155,18 @@ namespace PodcastDownloader
                     throw;
                 }
             }
+        }
+
+        private string CleanupFilename(string file)
+        {
+            var invalid = Path.GetInvalidFileNameChars();
+            var newname = new string(file.Where(c => !invalid.Contains(c)).ToArray());
+            if (newname != file && logger != null)
+            {
+                logger.WriteLine($"Changing '{file}' into '{newname}'.");
+            }
+
+            return newname;
         }
 
         private void EnsureFolderExists(string folderName)
