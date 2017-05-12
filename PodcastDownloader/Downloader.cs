@@ -116,7 +116,7 @@ namespace PodcastDownloader
             if (!this.useSeparateFeedFolder)
             {
                 // not a separate folder, so prefix with feed name
-                file = this.feed.Name + " ◆ " + file;
+                file = this.feed.Name + " — " + file;
             }
 
             file = CleanupFilename(file);
@@ -161,6 +161,11 @@ namespace PodcastDownloader
         {
             var invalid = Path.GetInvalidFileNameChars();
             var newname = new string(file.Where(c => !invalid.Contains(c)).ToArray());
+            if (newname.StartsWith("."))
+            {
+                newname = newname.TrimStart('.');
+            }
+
             if (newname != file && logger != null)
             {
                 logger.WriteLine($"Changing '{file}' into '{newname}'.");
