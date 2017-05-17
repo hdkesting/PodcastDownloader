@@ -8,7 +8,7 @@ namespace PodcastDownloader
     {
         static void Main(string[] args)
         {
-            bool errors = false;
+            bool success = true;
             try
             {
                 // load config
@@ -18,7 +18,7 @@ namespace PodcastDownloader
                 // Parallel.ForEach(config.Feeds.Where(f => !f.Disabled), ProcessFeed);
                 foreach(var feed in config.Feeds.Where(f => !f.Disabled))
                 {
-                    errors |= ProcessFeed(feed);
+                    success &= ProcessFeed(feed);
                     ConfigManager.Instance.SaveCurrentConfig();
                 }
 
@@ -37,14 +37,14 @@ namespace PodcastDownloader
                     ex = ex.InnerException;
                 }
 
-                errors = true;
+                success = false;
             }
             finally
             {
                 ConfigManager.Instance.SaveCurrentConfig();
             }
 
-            if (errors)
+            if (!success)
             {
                 Console.Write("Press return to exit >");
                 Console.ReadLine();
@@ -53,6 +53,7 @@ namespace PodcastDownloader
 
         private static bool ProcessFeed(FeedDefinition feed)
         {
+            Console.WriteLine(feed.Name + "...");
             try
             {
                 using (var dl = new Downloader(feed))
