@@ -29,8 +29,8 @@ namespace PodcastDownloader
 
             logpath = Path.Combine(logpath, CleanupFilename(feed.Name) + ".txt");
 
-            logger = File.AppendText(logpath);
-            logger.WriteLine(new string('=', 20) + " " + DateTime.Now.ToString(CultureInfo.CurrentCulture));
+            this.logger = File.AppendText(logpath);
+            this.logger.WriteLine(new string('=', 20) + " " + DateTime.Now.ToString(CultureInfo.CurrentCulture));
         }
 
         public void Process()
@@ -49,7 +49,7 @@ namespace PodcastDownloader
 
                     if (podcast == null)
                     {
-                        logger.WriteLine($"No podcast found at {this.feed.Url}.");
+                        this.logger.WriteLine($"No podcast found at {this.feed.Url}.");
                         return;
                     }
                 }
@@ -71,7 +71,7 @@ namespace PodcastDownloader
 
                 if (podcast == null)
                 {
-                    logger.WriteLine($"Error loading podcast {this.feed.Name}.");
+                    this.logger.WriteLine($"Error loading podcast {this.feed.Name}.");
                     this.feed.LatestError = ex.Message;
                     WriteException(ex);
                     return;
@@ -125,7 +125,7 @@ namespace PodcastDownloader
 
             if (File.Exists(path))
             {
-                logger.WriteLine($"File already downloaded: {file}, skipping.");
+                this.logger.WriteLine($"File already downloaded: {file}, skipping.");
             }
             else
             {
@@ -141,10 +141,12 @@ namespace PodcastDownloader
                             response.GetResponseStream()?.CopyTo(wrt);
                         }
 
+#pragma warning disable IDE0017 // Simplify object initialization
                         var fi = new FileInfo(path);
+#pragma warning restore IDE0017 // Simplify object initialization
                         fi.CreationTimeUtc = pubdate.UtcDateTime;
 
-                        logger.WriteLine($"Downloaded file {path}.");
+                        this.logger.WriteLine($"Downloaded file {path}.");
                     }
 
                 }
@@ -166,9 +168,9 @@ namespace PodcastDownloader
                 newname = newname.TrimStart('.');
             }
 
-            if (newname != file && logger != null)
+            if (newname != file && this.logger != null)
             {
-                logger.WriteLine($"Changing '{file}' into '{newname}'.");
+                this.logger.WriteLine($"Changing '{file}' into '{newname}'.");
             }
 
             return newname;
@@ -211,7 +213,7 @@ namespace PodcastDownloader
             }
             catch (Exception ex)
             {
-                logger.WriteLine($"Fixing feed {this.feed.Name} didn't work.");
+                this.logger.WriteLine($"Fixing feed {this.feed.Name} didn't work.");
                 WriteException(ex);
                 return null;
             }
@@ -221,10 +223,10 @@ namespace PodcastDownloader
         {
             while (ex != null)
             {
-                logger.WriteLine(ex.Message);
+                this.logger.WriteLine(ex.Message);
                 if (ex.InnerException != null)
                 {
-                    logger.WriteLine(new String('-', 20));
+                    this.logger.WriteLine(new String('-', 20));
                 }
 
                 ex = ex.InnerException;
@@ -233,10 +235,10 @@ namespace PodcastDownloader
 
         public void Dispose()
         {
-            logger.WriteLine(DateTime.Now.ToString(CultureInfo.CurrentCulture) + " " + new string('=', 20));
-            logger.Flush();
-            logger.Close();
-            logger.Dispose();
+            this.logger.WriteLine(DateTime.Now.ToString(CultureInfo.CurrentCulture) + " " + new string('=', 20));
+            this.logger.Flush();
+            this.logger.Close();
+            this.logger.Dispose();
         }
     }
 }

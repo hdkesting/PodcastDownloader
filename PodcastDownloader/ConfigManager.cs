@@ -22,7 +22,7 @@ namespace PodcastDownloader
                 System.Configuration.ConfigurationManager.AppSettings["BasePath"] = basePath;
             }
 
-            configPath = Path.Combine(basePath, ConfigName);
+            this.configPath = Path.Combine(basePath, ConfigName);
         }
 
         public static ConfigManager Instance => _instance ?? (_instance = new ConfigManager());

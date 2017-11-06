@@ -15,17 +15,11 @@ namespace PodcastDownloader
                 var config = ConfigManager.Instance.GetCurrentConfig();
 
                 // process feeds
-                // Parallel.ForEach(config.Feeds.Where(f => !f.Disabled), ProcessFeed);
-                foreach(var feed in config.Feeds.Where(f => !f.Disabled))
+                foreach (var feed in config.Feeds.Where(f => !f.Disabled))
                 {
                     success &= ProcessFeed(feed);
                     ConfigManager.Instance.SaveCurrentConfig();
                 }
-
-#if DEBUG
-                Console.Write("Press return to exit >");
-                Console.ReadLine();
-#endif
             }
             catch (Exception ex)
             {
@@ -44,7 +38,9 @@ namespace PodcastDownloader
                 ConfigManager.Instance.SaveCurrentConfig();
             }
 
+#if !DEBUG
             if (!success)
+#endif
             {
                 Console.Write("Press return to exit >");
                 Console.ReadLine();
@@ -66,6 +62,8 @@ namespace PodcastDownloader
             }
             catch (Exception ex)
             {
+                feed.LatestError = ex.Message;
+
                 while (ex != null)
                 {
                     Console.WriteLine(new string('-', 20));
