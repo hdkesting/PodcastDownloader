@@ -91,11 +91,10 @@ namespace PodcastDownloader
                 if (item.PublishDate > latest)
                 {
                     latest = item.PublishDate;
+                    this.feed.LatestDownload = latest;
+                    this.feed.LatestError = String.Empty;
                 }
             }
-
-            this.feed.LatestDownload = latest;
-            this.feed.LatestError = String.Empty;
         }
 
         private void DownloadFile(Uri linkUri, DateTimeOffset pubdate)
@@ -122,41 +121,64 @@ namespace PodcastDownloader
             file = CleanupFilename(file);
 
             var path = Path.Combine(folder, file);
+            var fi = new FileInfo(path);
 
-            if (File.Exists(path))
+            // a) bestaat nog niet -- prima, schrijven
+            // b) bestaat al met ~ zelfde tijd -- al gedaan, overslaan
+            // c) bestaat met andere tijd -- schrijf onder nieuwe naam
+
+            if (fi.Exists)
             {
-                this.logger.WriteLine($"File already downloaded: {file}, skipping.");
+                if (Math.Abs((pubdate - fi.CreationTimeUtc).TotalHours) < 1.0)
+                {
+                    Console.WriteLine($"File already downloaded: {file}, skipping.");
+                }
+                else
+                {
+                    var ext = Path.GetExtension(file);
+                    file = Path.GetFileNameWithoutExtension(file);
+                    file = file + pubdate.ToString("-yyyy-MM-dd") + ext;
+                    path = Path.Combine(folder, file);
+
+                    Console.WriteLine($"{this.feed.Name}: {file}");
+                    DownloadFileToLocal(linkUri, path, pubdate);
+                }
             }
             else
             {
                 Console.WriteLine($"{this.feed.Name}: {file}");
+                DownloadFileToLocal(linkUri, path, pubdate);
+            }
+        }
 
-                try
+        private void DownloadFileToLocal(Uri uri, string path, DateTimeOffset pubdate)
+        {
+            try
+            {
+                var request = WebRequest.Create(uri);
+                using (var response = request.GetResponse())
                 {
-                    var request = WebRequest.Create(linkUri);
-                    using (var response = request.GetResponse())
+                    using (var wrt = File.OpenWrite(path))
                     {
-                        using (var wrt = File.OpenWrite(path))
-                        {
-                            response.GetResponseStream()?.CopyTo(wrt);
-                        }
-
-#pragma warning disable IDE0017 // Simplify object initialization
-                        var fi = new FileInfo(path);
-#pragma warning restore IDE0017 // Simplify object initialization
-                        fi.CreationTimeUtc = pubdate.UtcDateTime;
-
-                        this.logger.WriteLine($"Downloaded file {path}.");
+                        response.GetResponseStream()?.CopyTo(wrt);
                     }
 
+#pragma warning disable IDE0017 // Simplify object initialization
+                    var fi = new FileInfo(path);
+#pragma warning restore IDE0017 // Simplify object initialization
+                    fi.CreationTimeUtc = pubdate.UtcDateTime;
+
+                    this.logger.WriteLine($"Downloaded file {path}.");
                 }
-                catch (Exception)
-                {
-                    // remove possibly partially downloaded file
-                    File.Delete(path);
-                    throw;
-                }
+
             }
+            catch (Exception)
+            {
+                // remove possibly partially downloaded file
+                File.Delete(path);
+                throw;
+            }
+
         }
 
         private string CleanupFilename(string file)
