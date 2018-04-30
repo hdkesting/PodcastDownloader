@@ -45,6 +45,14 @@ namespace PodcastDownloader
                 Console.Write("Press return to exit >");
                 Console.ReadLine();
             }
+
+#if !DEBUG
+            if (success)
+            {
+                Console.WriteLine("== Done ==");
+                System.Threading.Thread.Sleep(2000);
+            }
+#endif
         }
 
         private static bool ProcessFeed(FeedDefinition feed)
