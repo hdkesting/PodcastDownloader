@@ -18,7 +18,7 @@ namespace PodcastDownloader
                 foreach (var feed in config.Feeds.Where(f => !f.Disabled))
                 {
                     success &= ProcessFeed(feed);
-                    ConfigManager.Instance.SaveCurrentConfig();
+                    //ConfigManager.Instance.SaveCurrentConfig();
                 }
             }
             catch (Exception ex)
