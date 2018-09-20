@@ -17,11 +17,12 @@ namespace PodcastDownloader.Messages
         /// <param name="uri">The URI.</param>
         /// <param name="publishDate">The publish date.</param>
         /// <param name="targetFolder">The target folder.</param>
-        public ShowToDownload(Uri uri, DateTimeOffset publishDate, string targetFolder)
+        public ShowToDownload(Uri uri, DateTimeOffset publishDate, string targetFolder, string feedname)
         {
             this.Uri = uri;
             this.PublishDate = publishDate;
             this.TargetFolder = targetFolder;
+            this.Feedname = feedname;
         }
 
         /// <summary>
@@ -47,5 +48,13 @@ namespace PodcastDownloader.Messages
         /// The target folder.
         /// </value>
         public string TargetFolder { get; }
+
+        /// <summary>
+        /// Gets the feed's name.
+        /// </summary>
+        /// <value>
+        /// The feedname.
+        /// </value>
+        public string Feedname { get; }
     }
 }

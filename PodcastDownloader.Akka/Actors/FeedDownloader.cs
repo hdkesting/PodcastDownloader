@@ -45,7 +45,7 @@ namespace PodcastDownloader.Actors
 
                 case FeedConfiguration cfg:
                     this.config = cfg;
-                    this.downloader = Context.ActorOf<ShowDownloader>(cfg.Name);
+                    this.downloader = Context.ActorOf<ShowDownloader>(Support.Cleanup.MakeActorName(cfg.Name + "-showdownloader"));
                     this.Self.Tell(LoadCommand);
                     break;
 
@@ -69,7 +69,7 @@ namespace PodcastDownloader.Actors
             {
                 foreach (var link in item.Links.Where(l => l.RelationshipType == "enclosure"))
                 {
-                    var msg = new ShowToDownload(link.Uri, item.PublishDate, this.config.TargetFolder);
+                    var msg = new ShowToDownload(link.Uri, item.PublishDate, this.config.TargetFolder, this.config.Name);
                     this.downloader.Tell(msg, this.Self);
                 }
 

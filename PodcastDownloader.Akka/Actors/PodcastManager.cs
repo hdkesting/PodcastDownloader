@@ -9,6 +9,7 @@ namespace PodcastDownloader.Actors
     using System.IO;
     using System.Linq;
     using System.Text;
+    using System.Text.RegularExpressions;
     using System.Threading.Tasks;
     using Akka.Actor;
     using Newtonsoft.Json;
@@ -83,7 +84,7 @@ namespace PodcastDownloader.Actors
             // for each show in config, start (and activate) an actor
             foreach (var feed in this.currentConfig.Feeds.Where(f => !f.Disabled))
             {
-                var actor = Context.ActorOf<FeedDownloader>(feed.Name);
+                var actor = Context.ActorOf<FeedDownloader>(Support.Cleanup.MakeActorName(feed.Name));
                 this.feedReaders.Add(actor);
                 actor.Tell(new Messages.FeedConfiguration(feed, this.currentConfig.BasePath), this.Self);
             }
