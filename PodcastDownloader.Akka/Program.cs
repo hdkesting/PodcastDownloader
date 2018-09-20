@@ -23,15 +23,10 @@ namespace PodcastDownloader
         {
             using (var system = ActorSystem.Create("download-system"))
             {
-                var feedDownloadActor = system.ActorOf<Actors.PodcastManager>("feed-manager");
-
-                var cfg = new Messages.LoadConfiguration(
-                    new FileInfo(
-                        Path.Combine(
+                string configFile = Path.Combine(
                             System.Configuration.ConfigurationManager.AppSettings["BasePath"],
-                            ConfigName)));
-
-                feedDownloadActor.Tell(cfg);
+                            ConfigName);
+                var feedDownloadActor = system.ActorOf(Props.Create(() => new Actors.PodcastManager(configFile)));
 
                 // TODO wait for system to finish, then automatically exit
                 Console.ReadKey();

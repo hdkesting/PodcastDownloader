@@ -47,6 +47,8 @@
     </Reference>
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
+    <Reference Include="System.ServiceModel" />
+    <Reference Include="System.Web" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -57,7 +59,13 @@
   <ItemGroup>
     <Compile Include="Actors\FeedDownloader.cs" />
     <Compile Include="Actors\PodcastManager.cs" />
+    <Compile Include="Actors\ShowDownloader.cs" />
+    <Compile Include="Messages\ErrorMessage.cs" />
     <Compile Include="Messages\LoadConfiguration.cs" />
+    <Compile Include="Messages\ShowToDownload.cs" />
+    <Compile Include="Model\FeedConfig.cs" />
+    <Compile Include="Model\FeedDefinition.cs" />
+    <Compile Include="Messages\FeedConfiguration.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
