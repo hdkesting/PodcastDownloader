@@ -58,10 +58,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Actors\FeedDownloader.cs" />
+    <Compile Include="Messages\FileStored.cs" />
     <Compile Include="Actors\PodcastManager.cs" />
     <Compile Include="Actors\ShowDownloader.cs" />
+    <Compile Include="Messages\ShowResponse.cs" />
     <Compile Include="Messages\ErrorMessage.cs" />
     <Compile Include="Messages\LoadConfiguration.cs" />
+    <Compile Include="Messages\ShowProgressMessage.cs" />
     <Compile Include="Messages\ShowToDownload.cs" />
     <Compile Include="Model\FeedConfig.cs" />
     <Compile Include="Model\FeedDefinition.cs" />

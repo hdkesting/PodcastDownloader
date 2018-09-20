@@ -59,6 +59,15 @@ namespace PodcastDownloader.Actors
                     // queue the various shows for download on the single downloader
                     this.ReadAllShows();
                     break;
+
+                case ShowProgressMessage spm:
+                    if (spm.FeedName is null)
+                    {
+                        spm = new ShowProgressMessage(this.config.Name, spm.FileName, spm.BytesRead, spm.Message);
+                    }
+
+                    Context.Parent.Tell(spm, this.Self);
+                    break;
             }
         }
 

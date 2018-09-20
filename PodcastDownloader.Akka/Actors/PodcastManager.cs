@@ -13,6 +13,7 @@ namespace PodcastDownloader.Actors
     using System.Threading.Tasks;
     using Akka.Actor;
     using Newtonsoft.Json;
+    using PodcastDownloader.Messages;
 
     /// <summary>
     /// Actor responsible for managing the downloads of all configured feeds.
@@ -76,6 +77,10 @@ namespace PodcastDownloader.Actors
                 case ConfigurationLoadedMessage:
                     this.ProcessConfiguration();
                     break;
+
+                case ShowProgressMessage spm:
+                    Console.WriteLine($"{spm.FeedName}: {spm.FileName} ({spm.BytesRead}), '{spm.Message}'");
+                    break;
             }
         }
 
@@ -86,7 +91,7 @@ namespace PodcastDownloader.Actors
             {
                 var actor = Context.ActorOf<FeedDownloader>(Support.Cleanup.MakeActorName(feed.Name));
                 this.feedReaders.Add(actor);
-                actor.Tell(new Messages.FeedConfiguration(feed, this.currentConfig.BasePath), this.Self);
+                actor.Tell(new FeedConfiguration(feed, this.currentConfig.BasePath), this.Self);
             }
         }
 

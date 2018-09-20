@@ -5,11 +5,9 @@
 namespace PodcastDownloader.Actors
 {
     using System;
-    using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using System.Net;
-    using System.Text;
     using System.Threading.Tasks;
     using Akka.Actor;
     using PodcastDownloader.Messages;
@@ -34,6 +32,26 @@ namespace PodcastDownloader.Actors
 
                 case ShowToDownload todo:
                     this.DownloadFile(todo);
+                    break;
+
+                case ShowResponse resp:
+                    this.SaveFile(resp.Response.Result, resp.Path, resp.Pubdate);
+                    break;
+
+                case FileStored stored:
+                    this.FinishFileStore(stored);
+                    break;
+
+                case Exception ex:
+                    Console.WriteLine("Error downloading");
+                    while (ex != null)
+                    {
+                        Console.WriteLine(ex.Message);
+                        Console.WriteLine(ex.StackTrace);
+                        Console.WriteLine();
+                        ex = ex.InnerException;
+                    }
+
                     break;
             }
         }
@@ -73,7 +91,8 @@ namespace PodcastDownloader.Actors
             {
                 if (Math.Abs((show.PublishDate - fi.CreationTimeUtc).TotalHours) < 1.0)
                 {
-                    Console.WriteLine($"File already downloaded: {file}, skipping.");
+                    Context.Parent.Tell(new ShowProgressMessage(show.Feedname, file, fi.Length, "File already downloaded: skipping."), this.Self);
+                    return;
                 }
                 else
                 {
@@ -82,13 +101,11 @@ namespace PodcastDownloader.Actors
                     file = file + show.PublishDate.ToString("-yyyy-MM-dd") + ext;
                     targetpath = Path.Combine(folder, file);
 
-                    Console.WriteLine($"{show.Feedname}: {file}");
                     this.DownloadFileToLocal(show.Uri, targetpath, show.PublishDate);
                 }
             }
             else
             {
-                Console.WriteLine($"{show.Feedname}: {file}");
                 this.DownloadFileToLocal(show.Uri, targetpath, show.PublishDate);
             }
         }
@@ -97,27 +114,50 @@ namespace PodcastDownloader.Actors
         {
             try
             {
+                Context.Parent.Tell(new ShowProgressMessage(null, Path.GetFileName(path), 0, "About to read."), this.Self);
                 var request = WebRequest.Create(uri);
-                using (var response = request.GetResponse())
+                request.GetResponseAsync()
+                    .ContinueWith(res => new ShowResponse(res, path, pubdate), TaskContinuationOptions.AttachedToParent | TaskContinuationOptions.ExecuteSynchronously)
+                    .PipeTo(this.Self);
+            }
+            catch (Exception ex)
+            {
+                this.Self.Tell(ex);
+            }
+        }
+
+        private void SaveFile(WebResponse response, string path, DateTimeOffset pubdate)
+        {
+            try
+            {
+                Context.Parent.Tell(new ShowProgressMessage(null, Path.GetFileName(path), 0, "About to save."), this.Self);
+                using (var wrt = File.OpenWrite(path))
                 {
-                    using (var wrt = File.OpenWrite(path))
-                    {
-                        response.GetResponseStream()?.CopyTo(wrt);
-                    }
-
-#pragma warning disable IDE0017 // Simplify object initialization
-                    var fi = new FileInfo(path);
-#pragma warning restore IDE0017 // Simplify object initialization
-                    fi.CreationTimeUtc = pubdate.UtcDateTime;
-
-                    //// this.logger.WriteLine($"Downloaded file {path}.");
+                    response.GetResponseStream()?.CopyToAsync(wrt)
+                        .ContinueWith(x => new FileStored(path, pubdate), TaskContinuationOptions.AttachedToParent | TaskContinuationOptions.ExecuteSynchronously)
+                        .PipeTo(this.Self);
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // remove possibly partially downloaded file
-                File.Delete(path);
-                throw;
+                this.Self.Tell(ex);
+            }
+        }
+
+        private void FinishFileStore(FileStored details)
+        {
+            try
+            {
+#pragma warning disable IDE0017 // Simplify object initialization
+                var fi = new FileInfo(details.Path);
+#pragma warning restore IDE0017 // Simplify object initialization
+                fi.CreationTimeUtc = details.Pubdate.UtcDateTime;
+
+                Context.Parent.Tell(new ShowProgressMessage(null, fi.Name, fi.Length, "Stored locally!"), this.Self);
+            }
+            catch (Exception ex)
+            {
+                this.Self.Tell(ex);
             }
         }
 

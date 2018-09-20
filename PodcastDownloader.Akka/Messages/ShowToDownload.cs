@@ -12,11 +12,12 @@ namespace PodcastDownloader.Messages
     public class ShowToDownload
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="ShowToDownload"/> class.
+        /// Initializes a new instance of the <see cref="ShowToDownload" /> class.
         /// </summary>
         /// <param name="uri">The URI.</param>
         /// <param name="publishDate">The publish date.</param>
         /// <param name="targetFolder">The target folder.</param>
+        /// <param name="feedname">The feed's name.</param>
         public ShowToDownload(Uri uri, DateTimeOffset publishDate, string targetFolder, string feedname)
         {
             this.Uri = uri;
