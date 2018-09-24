@@ -108,8 +108,11 @@ namespace PodcastDownloader.Actors
                     if (this.feedReaders.Count == 0)
                     {
                         // exit
-                        Console.WriteLine("exiting ?");
-                        CoordinatedShutdown.Get(Context.System).Run(CoordinatedShutdown.ClusterLeavingReason.Instance);
+                        Console.WriteLine("terminating the ActorSystem ...");
+                        Context.System.Terminate();
+
+                        Console.WriteLine("terminating the app ...");
+                        Environment.Exit(0);
                     }
 
                     break;
