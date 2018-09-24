@@ -6,7 +6,6 @@ namespace PodcastDownloader.Messages
 {
     using System;
     using System.Net;
-    using System.Threading.Tasks;
 
     /// <summary>
     /// Response to a request for the show data.

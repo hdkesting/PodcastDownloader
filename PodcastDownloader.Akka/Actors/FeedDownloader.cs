@@ -5,12 +5,9 @@
 namespace PodcastDownloader.Actors
 {
     using System;
-    using System.Collections.Generic;
     using System.Linq;
     using System.Net;
     using System.ServiceModel.Syndication;
-    using System.Text;
-    using System.Threading.Tasks;
     using System.Web;
     using System.Xml;
     using System.Xml.Linq;
@@ -23,6 +20,11 @@ namespace PodcastDownloader.Actors
     /// <seealso cref="Akka.Actor.ReceiveActor" />
     public class FeedDownloader : UntypedActor
     {
+        /// <summary>
+        /// The message that the queue is done.
+        /// </summary>
+        public const string QueueIsDoneMessage = "QueueIsDone";
+
         private const string LoadCommand = "Load";
         private const string ProcessCommand = "Process";
 
@@ -67,6 +69,16 @@ namespace PodcastDownloader.Actors
                     }
 
                     Context.Parent.Tell(spm, this.Self);
+                    break;
+
+                case QueueIsDoneMessage:
+                    Context.Stop(Context.Sender);
+                    Context.Parent.Tell(new ShowProgressMessage(this.config.Name, "--", 0, "Feed is done"));
+                    Context.Parent.Tell(PodcastManager.FeedIsDoneMessage);
+                    break;
+
+                default:
+                    Console.WriteLine("Ignoring unknown message in FeedDownloader: " + message);
                     break;
             }
         }

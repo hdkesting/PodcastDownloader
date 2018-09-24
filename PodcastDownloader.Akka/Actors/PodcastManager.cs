@@ -8,9 +8,6 @@ namespace PodcastDownloader.Actors
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
-    using System.Text;
-    using System.Text.RegularExpressions;
-    using System.Threading.Tasks;
     using Akka.Actor;
     using Newtonsoft.Json;
     using PodcastDownloader.Messages;
@@ -21,6 +18,11 @@ namespace PodcastDownloader.Actors
     /// <seealso cref="Akka.Actor.ReceiveActor" />
     public class PodcastManager : UntypedActor
     {
+        /// <summary>
+        /// The message to signal a feed is done.
+        /// </summary>
+        public const string FeedIsDoneMessage = "FeedIsDone";
+
         private const string ConfigurationLoadedMessage = "ConfigurationLoaded";
 
         private readonly string configFile;
@@ -81,6 +83,21 @@ namespace PodcastDownloader.Actors
                 case ShowProgressMessage spm:
                     Console.WriteLine($"{spm.FeedName}: {spm.FileName} ({spm.BytesRead}), '{spm.Message}'");
                     break;
+
+                case FeedIsDoneMessage:
+                    Console.WriteLine("#feeds before: " + this.feedReaders.Count);
+                    this.feedReaders.RemoveAll(actor => actor.Path == Context.Sender.Path);
+                    Context.Stop(Context.Sender);
+                    Console.WriteLine("#feeds after: " + this.feedReaders.Count);
+
+                    if (this.feedReaders.Count == 0)
+                    {
+                        // exit
+                        Console.WriteLine("exiting ?");
+                        CoordinatedShutdown.Get(Context.System).Run(CoordinatedShutdown.ClusterLeavingReason.Instance);
+                    }
+
+                    break;
             }
         }
 
@@ -89,7 +106,8 @@ namespace PodcastDownloader.Actors
             // for each show in config, start (and activate) an actor
             foreach (var feed in this.currentConfig.Feeds.Where(f => !f.Disabled))
             {
-                var actor = Context.ActorOf<FeedDownloader>(Support.Cleanup.MakeActorName(feed.Name));
+                var feedname = Support.Cleanup.MakeActorName(feed.Name);
+                var actor = Context.ActorOf<FeedDownloader>(feedname);
                 this.feedReaders.Add(actor);
                 actor.Tell(new FeedConfiguration(feed, this.currentConfig.BasePath), this.Self);
             }

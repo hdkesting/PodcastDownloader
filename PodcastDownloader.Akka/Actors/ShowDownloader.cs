@@ -62,7 +62,7 @@ namespace PodcastDownloader.Actors
                     else
                     {
                         this.downloading = false;
-                        //// TODO message to parent "queue is done"
+                        Context.Parent.Tell(FeedDownloader.QueueIsDoneMessage);
                     }
 
                     break;
@@ -90,6 +90,10 @@ namespace PodcastDownloader.Actors
 
                     // go to next one (if any)
                     this.Self.Tell(ProcessQueueMessage);
+                    break;
+
+                default:
+                    Console.WriteLine("Ignoring unknown message in ShowDownloader: " + message);
                     break;
             }
         }
@@ -120,11 +124,12 @@ namespace PodcastDownloader.Actors
             var targetpath = Path.Combine(folder, file);
             var fi = new FileInfo(targetpath);
 
-            // a) bestaat nog niet -- prima, schrijven
-            // b) bestaat al met ~ zelfde tijd -- al gedaan, overslaan
-            // c) bestaat met andere tijd -- schrijf onder nieuwe naam
+            /*
+            // a) doesn't exist yet -- great, write it
+            // b) exists with about the same time -- already done, skip
+            // c) exists with other time -- write under new name
+            */
 
-            // TODO remove Console.Writeline - post message to parent
             if (fi.Exists)
             {
                 if (Math.Abs((show.PublishDate - fi.CreationTimeUtc).TotalHours) < 1.0)
@@ -154,12 +159,26 @@ namespace PodcastDownloader.Actors
             {
                 Context.Parent.Tell(new ShowProgressMessage(null, Path.GetFileName(path), 0, "About to read."), this.Self);
                 var request = WebRequest.Create(uri);
-                var task = request.GetResponseAsync();
-
-                task.ContinueWith(x => x.Exception, TaskContinuationOptions.OnlyOnFaulted)
-                    .PipeTo(this.Self);
-                task.ContinueWith(res => new ShowResponse(res.Result, path, pubdate), TaskContinuationOptions.AttachedToParent | TaskContinuationOptions.ExecuteSynchronously)
-                    .PipeTo(this.Self);
+                request.GetResponseAsync()
+                    .ContinueWith(
+                        t =>
+                            {
+                                if (t.IsFaulted)
+                                {
+                                    return (object)t.Exception;
+                                }
+                                else if (t.IsCompleted)
+                                {
+                                    return (object)new ShowResponse(t.Result, path, pubdate);
+                                }
+                                else
+                                {
+                                    // cancelled, so apparently I need to exit
+                                    return (object)FeedDownloader.QueueIsDoneMessage;
+                                }
+                            },
+                        TaskContinuationOptions.AttachedToParent | TaskContinuationOptions.ExecuteSynchronously)
+                        .PipeTo(this.Self);
             }
             catch (Exception ex)
             {
@@ -171,11 +190,29 @@ namespace PodcastDownloader.Actors
         {
             try
             {
-                Context.Parent.Tell(new ShowProgressMessage(null, Path.GetFileName(path), 0, "About to save."), this.Self);
-                using (var wrt = File.OpenWrite(path))
+                var filename = Path.GetFileName(path);
+                Context.Parent.Tell(new ShowProgressMessage(null, filename, 0, "About to save."), this.Self);
+                using (var fileOutput = File.OpenWrite(path))
                 {
-                    // because of the Disposable 'wrt', do not use an async message
-                    response.GetResponseStream()?.CopyTo(wrt);
+                    // because of the Disposable 'fileOutput', do not use an async message
+                    // https://stackoverflow.com/questions/230128/how-do-i-copy-the-contents-of-one-stream-to-another
+                    var streamInput = response.GetResponseStream();
+                    byte[] buffer = new byte[81_920];
+                    int read;
+                    long done = 0;
+                    long mbread = 0;
+                    while ((read = streamInput.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        fileOutput.Write(buffer, 0, read);
+                        done += read;
+                        var newmbread = done / (1024 * 1024);
+
+                        if (mbread != newmbread)
+                        {
+                            mbread = newmbread;
+                            Context.Parent.Tell(new ShowProgressMessage(null, filename, 0, $"Saving, {mbread} MBytes and counting."), this.Self);
+                        }
+                    }
 
                     this.Self.Tell(new FileStored(path, pubdate));
                 }
