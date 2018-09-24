@@ -7,7 +7,7 @@ namespace PodcastDownloader.Messages
     /// <summary>
     /// A message about progress of downloading one show.
     /// </summary>
-    internal class ShowProgressMessage
+    internal sealed class ShowProgressMessage
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="ShowProgressMessage"/> class.
@@ -55,5 +55,16 @@ namespace PodcastDownloader.Messages
         /// The message.
         /// </value>
         public string Message { get; }
+
+        /// <summary>
+        /// Returns a <see cref="string" /> that represents this instance.
+        /// </summary>
+        /// <returns>
+        /// A <see cref="string" /> that represents this instance.
+        /// </returns>
+        public override string ToString()
+        {
+            return $"{nameof(ShowProgressMessage)} from {this.FeedName} about {this.FileName ?? "none"}: {this.Message}.";
+        }
     }
 }

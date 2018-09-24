@@ -11,7 +11,7 @@ namespace PodcastDownloader.Messages
     /// <summary>
     /// Response to a request for the show data.
     /// </summary>
-    internal class ShowResponse
+    internal sealed class ShowResponse
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="ShowResponse"/> class.
@@ -19,7 +19,7 @@ namespace PodcastDownloader.Messages
         /// <param name="response">The response.</param>
         /// <param name="path">The path.</param>
         /// <param name="pubdate">The pubdate.</param>
-        public ShowResponse(Task<WebResponse> response, string path, DateTimeOffset pubdate)
+        public ShowResponse(WebResponse response, string path, DateTimeOffset pubdate)
         {
             this.Response = response;
             this.Path = path;
@@ -27,15 +27,15 @@ namespace PodcastDownloader.Messages
         }
 
         /// <summary>
-        /// Gets the response.
+        /// Gets the response from the file request.
         /// </summary>
         /// <value>
         /// The response.
         /// </value>
-        public Task<WebResponse> Response { get; }
+        public WebResponse Response { get; }
 
         /// <summary>
-        /// Gets the path.
+        /// Gets the path to store it.
         /// </summary>
         /// <value>
         /// The path.
@@ -49,5 +49,16 @@ namespace PodcastDownloader.Messages
         /// The pubdate.
         /// </value>
         public DateTimeOffset Pubdate { get; }
+
+        /// <summary>
+        /// Returns a <see cref="string" /> that represents this instance.
+        /// </summary>
+        /// <returns>
+        /// A <see cref="string" /> that represents this instance.
+        /// </returns>
+        public override string ToString()
+        {
+            return $"{nameof(ShowResponse)} from {this.Path}.";
+        }
     }
 }

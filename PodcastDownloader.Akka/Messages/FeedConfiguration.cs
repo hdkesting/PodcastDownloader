@@ -9,7 +9,7 @@ namespace PodcastDownloader.Messages
     /// <summary>
     /// Message specifying the configuration of the feed to process.
     /// </summary>
-    internal class FeedConfiguration
+    internal sealed class FeedConfiguration
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="FeedConfiguration" /> class.
@@ -55,5 +55,16 @@ namespace PodcastDownloader.Messages
         /// The target folder.
         /// </value>
         public string TargetFolder { get; }
+
+        /// <summary>
+        /// Returns a <see cref="string" /> that represents this instance.
+        /// </summary>
+        /// <returns>
+        /// A <see cref="string" /> that represents this instance.
+        /// </returns>
+        public override string ToString()
+        {
+            return $"{nameof(FeedConfiguration)}: '{this.Name}' ({this.LatestDownload}) from {this.Url}.";
+        }
     }
 }

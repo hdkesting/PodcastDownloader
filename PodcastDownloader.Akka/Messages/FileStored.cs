@@ -9,7 +9,7 @@ namespace PodcastDownloader.Messages
     /// <summary>
     /// Message telling that a file is stored.
     /// </summary>
-    internal class FileStored
+    internal sealed class FileStored
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="FileStored"/> class.
@@ -37,5 +37,16 @@ namespace PodcastDownloader.Messages
         /// The pubdate.
         /// </value>
         public DateTimeOffset Pubdate { get; }
+
+        /// <summary>
+        /// Returns a <see cref="string" /> that represents this instance.
+        /// </summary>
+        /// <returns>
+        /// A <see cref="string" /> that represents this instance.
+        /// </returns>
+        public override string ToString()
+        {
+            return $"{nameof(FileStored)}: {this.Path} @ {this.Pubdate}.";
+        }
     }
 }

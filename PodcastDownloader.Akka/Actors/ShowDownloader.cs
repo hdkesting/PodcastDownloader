@@ -5,6 +5,7 @@
 namespace PodcastDownloader.Actors
 {
     using System;
+    using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using System.Net;
@@ -18,6 +19,12 @@ namespace PodcastDownloader.Actors
     /// <seealso cref="Akka.Actor.UntypedActor" />
     public class ShowDownloader : UntypedActor
     {
+        private const string ProcessQueueMessage = "ProcessQueue";
+
+        private readonly Queue<ShowToDownload> downloadQueue = new Queue<ShowToDownload>();
+        private bool downloading = false;
+        private string feedname = "?unknown?";
+
         /// <summary>
         /// This defines the behavior of the UntypedActor.
         /// This method is called for every message received by the actor.
@@ -25,21 +32,50 @@ namespace PodcastDownloader.Actors
         /// <param name="message">The message.</param>
         protected override void OnReceive(object message)
         {
+            Console.WriteLine($"Feed: {this.feedname}; message: {message}");
+
             switch (message)
             {
                 case null:
                     break;
 
+                // 1) message from parent
                 case ShowToDownload todo:
-                    this.DownloadFile(todo);
+                    this.feedname = todo.Feedname;
+                    this.downloadQueue.Enqueue(todo);
+                    if (!this.downloading)
+                    {
+                        this.downloading = true;
+                        this.Self.Tell(ProcessQueueMessage);
+                    }
+
                     break;
 
+                // 2) start or continue processing queue: start downloading file
+                case ProcessQueueMessage:
+                    if (this.downloadQueue.Any())
+                    {
+                        var todo = this.downloadQueue.Dequeue();
+                        Context.Parent.Tell(new ShowProgressMessage(todo.Feedname, null, 0, $"Processing one item from queue, {this.downloadQueue.Count} items left."), this.Self);
+                        this.DownloadFile(todo);
+                    }
+                    else
+                    {
+                        this.downloading = false;
+                        //// TODO message to parent "queue is done"
+                    }
+
+                    break;
+
+                // 3) got the download, now store it
                 case ShowResponse resp:
-                    this.SaveFile(resp.Response.Result, resp.Path, resp.Pubdate);
+                    this.SaveFile(resp.Response, resp.Path, resp.Pubdate);
                     break;
 
+                // 4) finish storing, continue with queue
                 case FileStored stored:
                     this.FinishFileStore(stored);
+                    this.Self.Tell(ProcessQueueMessage);
                     break;
 
                 case Exception ex:
@@ -52,6 +88,8 @@ namespace PodcastDownloader.Actors
                         ex = ex.InnerException;
                     }
 
+                    // go to next one (if any)
+                    this.Self.Tell(ProcessQueueMessage);
                     break;
             }
         }
@@ -92,7 +130,7 @@ namespace PodcastDownloader.Actors
                 if (Math.Abs((show.PublishDate - fi.CreationTimeUtc).TotalHours) < 1.0)
                 {
                     Context.Parent.Tell(new ShowProgressMessage(show.Feedname, file, fi.Length, "File already downloaded: skipping."), this.Self);
-                    return;
+                    this.Self.Tell(ProcessQueueMessage);
                 }
                 else
                 {
@@ -116,8 +154,11 @@ namespace PodcastDownloader.Actors
             {
                 Context.Parent.Tell(new ShowProgressMessage(null, Path.GetFileName(path), 0, "About to read."), this.Self);
                 var request = WebRequest.Create(uri);
-                request.GetResponseAsync()
-                    .ContinueWith(res => new ShowResponse(res, path, pubdate), TaskContinuationOptions.AttachedToParent | TaskContinuationOptions.ExecuteSynchronously)
+                var task = request.GetResponseAsync();
+
+                task.ContinueWith(x => x.Exception, TaskContinuationOptions.OnlyOnFaulted)
+                    .PipeTo(this.Self);
+                task.ContinueWith(res => new ShowResponse(res.Result, path, pubdate), TaskContinuationOptions.AttachedToParent | TaskContinuationOptions.ExecuteSynchronously)
                     .PipeTo(this.Self);
             }
             catch (Exception ex)
@@ -133,9 +174,10 @@ namespace PodcastDownloader.Actors
                 Context.Parent.Tell(new ShowProgressMessage(null, Path.GetFileName(path), 0, "About to save."), this.Self);
                 using (var wrt = File.OpenWrite(path))
                 {
-                    response.GetResponseStream()?.CopyToAsync(wrt)
-                        .ContinueWith(x => new FileStored(path, pubdate), TaskContinuationOptions.AttachedToParent | TaskContinuationOptions.ExecuteSynchronously)
-                        .PipeTo(this.Self);
+                    // because of the Disposable 'wrt', do not use an async message
+                    response.GetResponseStream()?.CopyTo(wrt);
+
+                    this.Self.Tell(new FileStored(path, pubdate));
                 }
             }
             catch (Exception ex)

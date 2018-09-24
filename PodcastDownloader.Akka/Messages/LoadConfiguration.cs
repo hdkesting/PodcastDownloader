@@ -9,7 +9,7 @@ namespace PodcastDownloader.Messages
     /// <summary>
     /// A message to start loading the defined configutaion file (and start acting on it).
     /// </summary>
-    public class LoadConfiguration
+    internal sealed class LoadConfiguration
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="LoadConfiguration"/> class.
@@ -36,5 +36,16 @@ namespace PodcastDownloader.Messages
         /// The configuration file.
         /// </value>
         public FileInfo ConfigurationFile { get; }
+
+        /// <summary>
+        /// Returns a <see cref="string" /> that represents this instance.
+        /// </summary>
+        /// <returns>
+        /// A <see cref="string" /> that represents this instance.
+        /// </returns>
+        public override string ToString()
+        {
+            return $"{nameof(LoadConfiguration)} from {this.ConfigurationFile.Name}.";
+        }
     }
 }

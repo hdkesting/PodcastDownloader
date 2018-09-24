@@ -57,5 +57,16 @@ namespace PodcastDownloader.Messages
         /// The feedname.
         /// </value>
         public string Feedname { get; }
+
+        /// <summary>
+        /// Returns a <see cref="string" /> that represents this instance.
+        /// </summary>
+        /// <returns>
+        /// A <see cref="string" /> that represents this instance.
+        /// </returns>
+        public override string ToString()
+        {
+            return $"{nameof(ShowToDownload)} from {this.Uri} to {this.TargetFolder} for {this.Feedname}.";
+        }
     }
 }
