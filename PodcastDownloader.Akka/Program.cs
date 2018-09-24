@@ -21,6 +21,7 @@ namespace PodcastDownloader
         /// <param name="args">The arguments.</param>
         private static void Main(string[] args)
         {
+            Console.WriteLine("Starting system");
             using (var system = ActorSystem.Create("download-system"))
             {
                 string configFile = Path.Combine(
@@ -29,7 +30,8 @@ namespace PodcastDownloader
                 var feedDownloadActor = system.ActorOf(Props.Create(() => new Actors.PodcastManager(configFile)));
 
                 // TODO wait for system to finish, then automatically exit
-                Console.ReadKey();
+                Console.WriteLine("Waiting for system to finish or <enter>.");
+                Console.ReadLine();
             }
         }
     }

@@ -40,6 +40,8 @@ namespace PodcastDownloader.Actors
         /// <param name="message">The message.</param>
         protected override void OnReceive(object message)
         {
+            Console.WriteLine($"{nameof(FeedDownloader)} ({this.config?.Name ?? "?"}): received '{message}'.");
+
             switch (message)
             {
                 case null:
@@ -71,6 +73,11 @@ namespace PodcastDownloader.Actors
                     Context.Parent.Tell(spm, this.Self);
                     break;
 
+                case FileStored stored:
+                    //// have the PodcastManager update the stored "latest download" date.
+                    Context.Parent.Tell(stored.SetFeedName(this.config.Name));
+                    break;
+
                 case QueueIsDoneMessage:
                     Context.Stop(Context.Sender);
                     Context.Parent.Tell(new ShowProgressMessage(this.config.Name, "--", 0, "Feed is done"));
@@ -86,12 +93,17 @@ namespace PodcastDownloader.Actors
         private void ReadAllShows()
         {
             DateTimeOffset latest = this.config.LatestDownload;
+
+            bool haschild = false;
             foreach (var item in this.podcast.Items.Where(it => it.PublishDate > latest).OrderBy(it => it.PublishDate))
             {
+                Console.WriteLine("Podcast: " + item.Title.Text);
                 foreach (var link in item.Links.Where(l => l.RelationshipType == "enclosure"))
                 {
+                    Console.WriteLine("Link: " + link.Uri);
                     var msg = new ShowToDownload(link.Uri, item.PublishDate, this.config.TargetFolder, this.config.Name);
                     this.downloader.Tell(msg, this.Self);
+                    haschild = true;
                 }
 
                 ////if (item.PublishDate > latest)
@@ -100,6 +112,12 @@ namespace PodcastDownloader.Actors
                 ////    this.feed.LatestDownload = latest;
                 ////    this.feed.LatestError = String.Empty;
                 ////}
+            }
+
+            if (!haschild)
+            {
+                Console.WriteLine("Nothing found to download.");
+                this.Self.Tell(QueueIsDoneMessage);
             }
         }
 

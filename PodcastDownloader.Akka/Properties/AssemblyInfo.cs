@@ -12,9 +12,9 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("PodcastDownloader.Akka")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("EPAM Systems")]
+[assembly: AssemblyCompany("Hans Kesting")]
 [assembly: AssemblyProduct("PodcastDownloader.Akka")]
-[assembly: AssemblyCopyright("Copyright © EPAM Systems 2018")]
+[assembly: AssemblyCopyright("Copyright © Hans Kesting 2018")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

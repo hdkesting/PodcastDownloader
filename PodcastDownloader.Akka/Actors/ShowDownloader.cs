@@ -76,6 +76,7 @@ namespace PodcastDownloader.Actors
                 case FileStored stored:
                     this.FinishFileStore(stored);
                     this.Self.Tell(ProcessQueueMessage);
+                    Context.Parent.Tell(stored);
                     break;
 
                 case Exception ex:
@@ -134,7 +135,9 @@ namespace PodcastDownloader.Actors
             {
                 if (Math.Abs((show.PublishDate - fi.CreationTimeUtc).TotalHours) < 1.0)
                 {
+                    // TODO move to separate message(-handler)
                     Context.Parent.Tell(new ShowProgressMessage(show.Feedname, file, fi.Length, "File already downloaded: skipping."), this.Self);
+                    Context.Parent.Tell(new FileStored(file, show.PublishDate));
                     this.Self.Tell(ProcessQueueMessage);
                 }
                 else
@@ -199,18 +202,18 @@ namespace PodcastDownloader.Actors
                     var streamInput = response.GetResponseStream();
                     byte[] buffer = new byte[81_920];
                     int read;
-                    long done = 0;
+                    long totalread = 0;
                     long mbread = 0;
                     while ((read = streamInput.Read(buffer, 0, buffer.Length)) > 0)
                     {
                         fileOutput.Write(buffer, 0, read);
-                        done += read;
-                        var newmbread = done / (1024 * 1024);
+                        totalread += read;
+                        var newmbread = totalread / (1024 * 1024);
 
                         if (mbread != newmbread)
                         {
                             mbread = newmbread;
-                            Context.Parent.Tell(new ShowProgressMessage(null, filename, 0, $"Saving, {mbread} MBytes and counting."), this.Self);
+                            Context.Parent.Tell(new ShowProgressMessage(null, filename, totalread, $"Saving, {mbread} MBytes and counting."), this.Self);
                         }
                     }
 

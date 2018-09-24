@@ -50,12 +50,14 @@ namespace PodcastDownloader.Actors
             // start reading the config file
             if (File.Exists(this.configFile))
             {
+                Console.WriteLine("Loading existing config");
                 var json = File.ReadAllText(this.configFile);
                 this.currentConfig = JsonConvert.DeserializeObject<FeedConfig>(json);
             }
             else
             {
                 // create one!
+                Console.WriteLine("Creating fresh config");
                 this.currentConfig = new FeedConfig();
                 this.InitializeConfig(this.currentConfig);
                 this.SaveCurrentConfig();
@@ -71,6 +73,8 @@ namespace PodcastDownloader.Actors
         /// <param name="message">The message.</param>
         protected override void OnReceive(object message)
         {
+            Console.WriteLine($"{nameof(PodcastManager)}: received message '{message}'.");
+
             switch (message)
             {
                 case null:
@@ -78,17 +82,28 @@ namespace PodcastDownloader.Actors
 
                 case ConfigurationLoadedMessage:
                     this.ProcessConfiguration();
+                    Console.WriteLine("Configuration is processed, child actors are started.");
                     break;
 
                 case ShowProgressMessage spm:
-                    Console.WriteLine($"{spm.FeedName}: {spm.FileName} ({spm.BytesRead}), '{spm.Message}'");
+                    Console.WriteLine($"{spm.FeedName}: {spm.FileName} ({spm.BytesRead:N0}), '{spm.Message}'");
+                    break;
+
+                // find the correct config entry, update its LatestDownload (if needed) and save
+                case FileStored stored:
+                    var entry = this.currentConfig.Feeds.FirstOrDefault(f => Support.Cleanup.MakeActorName(f.Name) == Support.Cleanup.MakeActorName(stored.FeedName));
+                    if (entry != null && entry.LatestDownload < stored.Pubdate)
+                    {
+                        entry.LatestDownload = stored.Pubdate;
+                        this.SaveCurrentConfig();
+                    }
+
                     break;
 
                 case FeedIsDoneMessage:
-                    Console.WriteLine("#feeds before: " + this.feedReaders.Count);
                     this.feedReaders.RemoveAll(actor => actor.Path == Context.Sender.Path);
                     Context.Stop(Context.Sender);
-                    Console.WriteLine("#feeds after: " + this.feedReaders.Count);
+                    Console.WriteLine($"#feeds left == {this.feedReaders.Count}: {string.Join(", ", this.feedReaders.Select(a => a.Path.Name))}.");
 
                     if (this.feedReaders.Count == 0)
                     {
@@ -104,12 +119,20 @@ namespace PodcastDownloader.Actors
         private void ProcessConfiguration()
         {
             // for each show in config, start (and activate) an actor
+            var delay = TimeSpan.FromSeconds(2);
             foreach (var feed in this.currentConfig.Feeds.Where(f => !f.Disabled))
             {
                 var feedname = Support.Cleanup.MakeActorName(feed.Name);
                 var actor = Context.ActorOf<FeedDownloader>(feedname);
                 this.feedReaders.Add(actor);
-                actor.Tell(new FeedConfiguration(feed, this.currentConfig.BasePath), this.Self);
+
+                Context.System.Scheduler.ScheduleTellOnce(
+                    delay,
+                    actor,
+                    new FeedConfiguration(feed, this.currentConfig.BasePath),
+                    this.Self);
+
+                delay = delay.Add(TimeSpan.FromSeconds(4));
             }
         }
 
