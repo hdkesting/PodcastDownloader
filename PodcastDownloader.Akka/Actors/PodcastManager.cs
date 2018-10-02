@@ -73,7 +73,9 @@ namespace PodcastDownloader.Actors
         /// <param name="message">The message.</param>
         protected override void OnReceive(object message)
         {
+#if DEBUG
             Console.WriteLine($"{nameof(PodcastManager)}: received message '{message}'.");
+#endif
 
             switch (message)
             {
@@ -110,9 +112,6 @@ namespace PodcastDownloader.Actors
                         // exit
                         Console.WriteLine("terminating the ActorSystem ...");
                         Context.System.Terminate();
-
-                        Console.WriteLine("terminating the app ...");
-                        Environment.Exit(0);
                     }
 
                     break;
