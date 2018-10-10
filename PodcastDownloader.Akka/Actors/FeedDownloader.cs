@@ -98,12 +98,19 @@ namespace PodcastDownloader.Actors
             foreach (var item in this.podcast.Items.Where(it => it.PublishDate > latest).OrderBy(it => it.PublishDate))
             {
                 Console.WriteLine("Podcast: " + item.Title.Text);
-                foreach (var link in item.Links.Where(l => l.RelationshipType == "enclosure"))
+                if (item.Links != null)
                 {
-                    Console.WriteLine("Link: " + link.Uri);
-                    var msg = new ShowToDownload(link.Uri, item.PublishDate, this.config.TargetFolder, this.config.Name);
-                    this.downloader.Tell(msg, this.Self);
-                    haschild = true;
+                    foreach (var link in item.Links.Where(l => l.RelationshipType == "enclosure"))
+                    {
+                        Console.WriteLine("Link: " + link.Uri);
+                        var msg = new ShowToDownload(link.Uri, item.PublishDate, this.config.TargetFolder, this.config.Name);
+                        this.downloader.Tell(msg, this.Self);
+                        haschild = true;
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("No links found!");
                 }
 
                 ////if (item.PublishDate > latest)
