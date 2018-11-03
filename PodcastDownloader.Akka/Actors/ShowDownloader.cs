@@ -9,17 +9,19 @@ namespace PodcastDownloader.Actors
     using System.IO;
     using System.Linq;
     using System.Net;
+    using System.Text.RegularExpressions;
     using System.Threading.Tasks;
     using Akka.Actor;
     using PodcastDownloader.Messages;
 
     /// <summary>
-    /// Download a single show (at a time).
+    /// Download a single show (at a time, per feed).
     /// </summary>
     /// <seealso cref="Akka.Actor.UntypedActor" />
     public class ShowDownloader : UntypedActor
     {
         private const string ProcessQueueMessage = "ProcessQueue";
+        private static readonly char[] InvalidFileNameChars = Path.GetInvalidFileNameChars();
 
         private readonly Queue<ShowToDownload> downloadQueue = new Queue<ShowToDownload>();
         private bool downloading = false;
@@ -89,8 +91,8 @@ namespace PodcastDownloader.Actors
                         ex = ex.InnerException;
                     }
 
-                    // go to next one (if any)
-                    this.Self.Tell(ProcessQueueMessage);
+                    // abort
+                    Context.Parent.Tell(FeedDownloader.QueueIsDoneMessage);
                     break;
 
                 default:
@@ -120,7 +122,7 @@ namespace PodcastDownloader.Actors
             file = show.Feedname + " - " + file;
             ////}
 
-            file = this.CleanupFilename(file);
+            file = this.CleanupFilename(file, show.PublishDate);
 
             var targetpath = Path.Combine(folder, file);
             var fi = new FileInfo(targetpath);
@@ -191,11 +193,16 @@ namespace PodcastDownloader.Actors
 
         private void SaveFile(WebResponse response, string path, DateTimeOffset pubdate)
         {
+            // download to temp location. Only move to final location when fully done
+            var temppath = Path.GetTempFileName();
+            long mbread = 0;
+            var filename = Path.GetFileName(path);
+
             try
             {
-                var filename = Path.GetFileName(path);
-                Context.Parent.Tell(new ShowProgressMessage(null, filename, 0, "About to save."), this.Self);
-                using (var fileOutput = File.OpenWrite(path))
+                Context.Parent.Tell(new ShowProgressMessage(null, filename, 0, "About to download."), this.Self);
+
+                using (var fileOutput = File.OpenWrite(temppath))
                 {
                     // because of the Disposable 'fileOutput', do not use an async message
                     // https://stackoverflow.com/questions/230128/how-do-i-copy-the-contents-of-one-stream-to-another
@@ -203,7 +210,6 @@ namespace PodcastDownloader.Actors
                     byte[] buffer = new byte[81_920];
                     int read;
                     long totalread = 0;
-                    long mbread = 0;
                     while ((read = streamInput.Read(buffer, 0, buffer.Length)) > 0)
                     {
                         fileOutput.Write(buffer, 0, read);
@@ -216,13 +222,14 @@ namespace PodcastDownloader.Actors
                             Context.Parent.Tell(new ShowProgressMessage(null, filename, totalread, $"Saving, {mbread} MBytes and counting."), this.Self);
                         }
                     }
-
-                    this.Self.Tell(new FileStored(path, pubdate));
                 }
+
+                File.Move(temppath, path);
+                this.Self.Tell(new FileStored(path, pubdate));
             }
             catch (Exception ex)
             {
-                this.Self.Tell(ex);
+                this.Self.Tell(new Exception($"Downloading to {filename}, using temp '{temppath}'. Downloaded {mbread} MB.", ex));
             }
         }
 
@@ -243,10 +250,18 @@ namespace PodcastDownloader.Actors
             }
         }
 
-        private string CleanupFilename(string file)
+        private string CleanupFilename(string file, DateTimeOffset pubdate)
         {
-            var invalid = Path.GetInvalidFileNameChars();
-            var newname = new string(file.Where(c => !invalid.Contains(c)).ToArray());
+            if (!Regex.IsMatch(file, "[0-9]"))
+            {
+                // no numbers, so assume not unique
+                var ext = Path.GetExtension(file);
+                file = Path.GetFileNameWithoutExtension(file);
+                file += "-" + pubdate.ToString("yyyyMMdd-HHmm");
+                file += ext;
+            }
+
+            var newname = new string(file.Where(c => !InvalidFileNameChars.Contains(c)).ToArray());
             if (newname.StartsWith("."))
             {
                 newname = newname.TrimStart('.');
