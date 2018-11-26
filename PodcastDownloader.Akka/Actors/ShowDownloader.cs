@@ -215,6 +215,7 @@ namespace PodcastDownloader.Actors
             }
             catch (Exception ex)
             {
+                File.Delete(temppath);
                 this.Self.Tell(new Exception($"Downloading to {filename}, using temp '{temppath}'. Downloaded {mbread} MB.", ex));
             }
         }
@@ -258,10 +259,7 @@ namespace PodcastDownloader.Actors
 
         private void EnsureFolderExists(string folderName)
         {
-            if (!Directory.Exists(folderName))
-            {
-                Directory.CreateDirectory(folderName);
-            }
+            Directory.CreateDirectory(folderName);
         }
     }
 }
