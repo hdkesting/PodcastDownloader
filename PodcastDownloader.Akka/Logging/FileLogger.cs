@@ -25,6 +25,7 @@ namespace PodcastDownloader.Logging
         {
             Directory.CreateDirectory(logFolder.FullName);
             this.logFile = new FileInfo(Path.Combine(logFolder.FullName, $"{DateTime.Now.ToString("yyyyMMdd-HHmm")}.log"));
+            Console.WriteLine("Logging to " + this.logFile.FullName);
         }
 
         /// <summary>
