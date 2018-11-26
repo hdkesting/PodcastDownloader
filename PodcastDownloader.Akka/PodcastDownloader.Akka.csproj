@@ -62,6 +62,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Actors\FeedDownloader.cs" />
+    <Compile Include="Logging\Logger.cs" />
+    <Compile Include="Logging\LogMessage.cs" />
+    <Compile Include="Logging\LogSeverity.cs" />
     <Compile Include="Messages\FileStored.cs" />
     <Compile Include="Actors\PodcastManager.cs" />
     <Compile Include="Actors\ShowDownloader.cs" />

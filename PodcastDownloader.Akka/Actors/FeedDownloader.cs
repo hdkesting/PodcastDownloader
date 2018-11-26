@@ -12,6 +12,7 @@ namespace PodcastDownloader.Actors
     using System.Xml;
     using System.Xml.Linq;
     using Akka.Actor;
+    using PodcastDownloader.Logging;
     using PodcastDownloader.Messages;
 
     /// <summary>
@@ -27,6 +28,7 @@ namespace PodcastDownloader.Actors
 
         private const string LoadCommand = "Load";
         private const string ProcessCommand = "Process";
+        private const string LogCategory = nameof(FeedDownloader);
 
         private FeedConfiguration config;
         private IActorRef downloader;
@@ -40,7 +42,7 @@ namespace PodcastDownloader.Actors
         /// <param name="message">The message.</param>
         protected override void OnReceive(object message)
         {
-            Console.WriteLine($"{nameof(FeedDownloader)} ({this.config?.Name ?? "?"}): received '{message}'.");
+            Logger.Log(LogSeverity.Debug, LogCategory, $"{this.config?.Name ?? "?"} received '{message}'.");
 
             switch (message)
             {
@@ -85,7 +87,7 @@ namespace PodcastDownloader.Actors
                     break;
 
                 default:
-                    Console.WriteLine("Ignoring unknown message in FeedDownloader: " + message);
+                    Logger.Log(LogSeverity.Warning, LogCategory, "Ignoring unknown message in FeedDownloader: " + message);
                     break;
             }
         }
@@ -102,7 +104,7 @@ namespace PodcastDownloader.Actors
                 {
                     foreach (var link in item.Links.Where(l => l.RelationshipType == "enclosure"))
                     {
-                        Console.WriteLine("Link: " + link.Uri);
+                        Logger.Log(LogSeverity.Debug, LogCategory, "Link: " + link.Uri);
                         var msg = new ShowToDownload(link.Uri, item.PublishDate, this.config.TargetFolder, this.config.Name);
                         this.downloader.Tell(msg, this.Self);
                         haschild = true;
@@ -110,7 +112,7 @@ namespace PodcastDownloader.Actors
                 }
                 else
                 {
-                    Console.WriteLine("No links found!");
+                    Logger.Log(LogSeverity.Warning, LogCategory, "No links found!");
                 }
 
                 ////if (item.PublishDate > latest)
@@ -123,7 +125,7 @@ namespace PodcastDownloader.Actors
 
             if (!haschild)
             {
-                Console.WriteLine("Nothing found to download.");
+                Logger.Log(LogSeverity.Information, LogCategory, "Nothing found to download.");
                 this.Self.Tell(QueueIsDoneMessage);
             }
         }
@@ -198,10 +200,6 @@ namespace PodcastDownloader.Actors
             catch (Exception ex)
             {
                 this.Self.Tell(new ErrorMessage(ex));
-
-                ////this.logger.WriteLine($"Fixing feed {this.feed.Name} didn't work.");
-                ////WriteException(ex);
-                ////return null;
             }
 
             return null;

@@ -8,6 +8,7 @@ namespace PodcastDownloader
     using System.IO;
     using System.Threading.Tasks;
     using Akka.Actor;
+    using PodcastDownloader.Logging;
 
     /// <summary>
     /// The main entry point of this console application.
@@ -24,6 +25,10 @@ namespace PodcastDownloader
         public static async Task Main(string[] args)
         {
             Console.WriteLine("Starting system");
+            Logger.StartLogging(
+                new DirectoryInfo(Path.Combine(
+                    System.Configuration.ConfigurationManager.AppSettings["BasePath"],
+                    "Log")));
             using (var system = ActorSystem.Create("download-system"))
             {
                 string configFile = Path.Combine(
@@ -34,6 +39,8 @@ namespace PodcastDownloader
                 // wait for system to finish, then automatically exit
                 await system.WhenTerminated;
             }
+
+            await Logger.StopLogging();
 
 #if DEBUG
             Console.WriteLine("Press <enter>.");

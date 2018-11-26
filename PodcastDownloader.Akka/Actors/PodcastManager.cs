@@ -10,6 +10,7 @@ namespace PodcastDownloader.Actors
     using System.Linq;
     using Akka.Actor;
     using Newtonsoft.Json;
+    using PodcastDownloader.Logging;
     using PodcastDownloader.Messages;
 
     /// <summary>
@@ -24,6 +25,7 @@ namespace PodcastDownloader.Actors
         public const string FeedIsDoneMessage = "FeedIsDone";
 
         private const string ConfigurationLoadedMessage = "ConfigurationLoaded";
+        private const string LogCategory = nameof(PodcastManager);
 
         private readonly string configFile;
         private readonly List<IActorRef> feedReaders = new List<IActorRef>();
@@ -50,14 +52,14 @@ namespace PodcastDownloader.Actors
             // start reading the config file
             if (File.Exists(this.configFile))
             {
-                Console.WriteLine("Loading existing config");
+                Logger.Log(LogSeverity.Information, LogCategory, "Loading existing config");
                 var json = File.ReadAllText(this.configFile);
                 this.currentConfig = JsonConvert.DeserializeObject<FeedConfig>(json);
             }
             else
             {
                 // create one!
-                Console.WriteLine("Creating fresh config");
+                Logger.Log(LogSeverity.Information, LogCategory, "Creating fresh config");
                 this.currentConfig = new FeedConfig();
                 this.InitializeConfig(this.currentConfig);
                 this.SaveCurrentConfig();
@@ -73,10 +75,6 @@ namespace PodcastDownloader.Actors
         /// <param name="message">The message.</param>
         protected override void OnReceive(object message)
         {
-#if DEBUG
-            Console.WriteLine($"{nameof(PodcastManager)}: received message '{message}'.");
-#endif
-
             switch (message)
             {
                 case null:
@@ -84,11 +82,11 @@ namespace PodcastDownloader.Actors
 
                 case ConfigurationLoadedMessage:
                     this.ProcessConfiguration();
-                    Console.WriteLine("Configuration is processed, child actors are started.");
+                    Logger.Log(LogSeverity.Information, LogCategory, "Configuration is processed, child actors are started.");
                     break;
 
                 case ShowProgressMessage spm:
-                    Console.WriteLine($"{spm.FeedName}: {spm.FileName} ({spm.BytesRead:N0}), '{spm.Message}'");
+                    Logger.Log(LogSeverity.Debug, LogCategory, $"{spm.FeedName}: {spm.FileName} ({spm.BytesRead:N0}), '{spm.Message}'");
                     break;
 
                 // find the correct config entry, update its LatestDownload (if needed) and save
@@ -105,12 +103,12 @@ namespace PodcastDownloader.Actors
                 case FeedIsDoneMessage:
                     this.feedReaders.RemoveAll(actor => actor.Path == Context.Sender.Path);
                     Context.Stop(Context.Sender);
-                    Console.WriteLine($"#feeds left == {this.feedReaders.Count}: {string.Join(", ", this.feedReaders.Select(a => a.Path.Name))}.");
+                    Logger.Log(LogSeverity.Debug, LogCategory, $"#feeds left == {this.feedReaders.Count}: {string.Join(", ", this.feedReaders.Select(a => a.Path.Name))}.");
 
                     if (this.feedReaders.Count == 0)
                     {
                         // exit
-                        Console.WriteLine("terminating the ActorSystem ...");
+                        Logger.Log(LogSeverity.Information, LogCategory, "terminating the ActorSystem ...");
                         Context.System.Terminate();
                     }
 

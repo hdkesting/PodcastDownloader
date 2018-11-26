@@ -12,6 +12,7 @@ namespace PodcastDownloader.Actors
     using System.Text.RegularExpressions;
     using System.Threading.Tasks;
     using Akka.Actor;
+    using PodcastDownloader.Logging;
     using PodcastDownloader.Messages;
 
     /// <summary>
@@ -21,6 +22,7 @@ namespace PodcastDownloader.Actors
     public class ShowDownloader : UntypedActor
     {
         private const string ProcessQueueMessage = "ProcessQueue";
+        private const string LogCategory = nameof(ShowDownloader);
         private static readonly char[] InvalidFileNameChars = Path.GetInvalidFileNameChars();
 
         private readonly Queue<ShowToDownload> downloadQueue = new Queue<ShowToDownload>();
@@ -34,7 +36,7 @@ namespace PodcastDownloader.Actors
         /// <param name="message">The message.</param>
         protected override void OnReceive(object message)
         {
-            Console.WriteLine($"Feed: {this.feedname}; message: {message}");
+            Logger.Log(LogSeverity.Debug, LogCategory, $"Feed: {this.feedname}; message: {message}");
 
             switch (message)
             {
@@ -82,21 +84,14 @@ namespace PodcastDownloader.Actors
                     break;
 
                 case Exception ex:
-                    Console.WriteLine("Error downloading");
-                    while (ex != null)
-                    {
-                        Console.WriteLine(ex.Message);
-                        Console.WriteLine(ex.StackTrace);
-                        Console.WriteLine();
-                        ex = ex.InnerException;
-                    }
+                    Logger.Log(LogSeverity.Failure, LogCategory, "Error downloading", ex);
 
                     // abort
                     Context.Parent.Tell(FeedDownloader.QueueIsDoneMessage);
                     break;
 
                 default:
-                    Console.WriteLine("Ignoring unknown message in ShowDownloader: " + message);
+                    Logger.Log(LogSeverity.Warning, LogCategory, "Ignoring unknown message in ShowDownloader: " + message);
                     break;
             }
         }
@@ -104,23 +99,14 @@ namespace PodcastDownloader.Actors
         private void DownloadFile(ShowToDownload show)
         {
             var folder = show.TargetFolder;
-            ////if (this.useSeparateFeedFolder)
-            ////{
-            ////    folder = Path.Combine(folder, this.feed.Name);
-            ////}
-            ////else
-            ////{
             folder = Path.Combine(folder, "__Files");
-            ////}
 
             this.EnsureFolderExists(folder);
 
             var file = show.Uri.Segments.Last();
-            ////if (!this.useSeparateFeedFolder)
-            ////{
-            // not a separate folder, so prefix with feed name
+
+            // Prefix with feed name
             file = show.Feedname + " - " + file;
-            ////}
 
             file = this.CleanupFilename(file, show.PublishDate);
 
@@ -266,11 +252,6 @@ namespace PodcastDownloader.Actors
             {
                 newname = newname.TrimStart('.');
             }
-
-            ////if (newname != file && this.logger != null)
-            ////{
-            ////    this.logger.WriteLine($"Changing '{file}' into '{newname}'.");
-            ////}
 
             return newname;
         }
