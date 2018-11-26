@@ -25,10 +25,14 @@ namespace PodcastDownloader
         public static async Task Main(string[] args)
         {
             Console.WriteLine("Starting system");
-            Logger.StartLogging(
+
+            Logger.AddTarget(new FileLogger(
                 new DirectoryInfo(Path.Combine(
                     System.Configuration.ConfigurationManager.AppSettings["BasePath"],
-                    "Log")));
+                    "Log"))));
+            Logger.AddTarget(new FancyConsoleLogger());
+            Logger.StartLogging();
+
             using (var system = ActorSystem.Create("download-system"))
             {
                 string configFile = Path.Combine(

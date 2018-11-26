@@ -6,7 +6,6 @@ namespace PodcastDownloader.Logging
 {
     using System;
     using System.Collections.Generic;
-    using System.IO;
     using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
@@ -19,7 +18,8 @@ namespace PodcastDownloader.Logging
         private static readonly List<LogMessage> LogMessages = new List<LogMessage>();
         private static CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
         private static Task outputTask;
-        private static FileInfo logFile;
+
+        private static List<ILogTarget> logTargets = new List<ILogTarget>();
 
         private static TimeSpan Interval { get; } = TimeSpan.FromSeconds(2);
 
@@ -29,8 +29,6 @@ namespace PodcastDownloader.Logging
         /// <param name="message">The message.</param>
         public static void Log(LogMessage message)
         {
-            Console.WriteLine(message);
-
             lock (LogMessages)
             {
                 LogMessages.Add(message);
@@ -50,14 +48,20 @@ namespace PodcastDownloader.Logging
         }
 
         /// <summary>
+        /// Adds the log target.
+        /// </summary>
+        /// <param name="target">The target.</param>
+        /// <exception cref="ArgumentNullException">target</exception>
+        public static void AddTarget(ILogTarget target)
+        {
+            logTargets.Add(target ?? throw new ArgumentNullException(nameof(target)));
+        }
+
+        /// <summary>
         /// Starts the logging to the logfile.
         /// </summary>
-        /// <param name="logFolder">The log folder.</param>
-        public static void StartLogging(DirectoryInfo logFolder)
+        public static void StartLogging()
         {
-            Directory.CreateDirectory(logFolder.FullName);
-            logFile = new FileInfo(Path.Combine(logFolder.FullName, $"{DateTime.Now.ToString("yyyyMMdd-HHmm")}.log"));
-
             // task needs to run in parallel, continuously
             outputTask = Task.Run(ProcessLogQueue, cancellationTokenSource.Token);
         }
@@ -68,10 +72,17 @@ namespace PodcastDownloader.Logging
         /// <returns>A Task.</returns>
         public static async Task StopLogging()
         {
-            cancellationTokenSource.Cancel();
+            try
+            {
+                cancellationTokenSource.Cancel();
 
-            await outputTask;
+                await outputTask;
+            }
+            catch (OperationCanceledException)
+            {
+            }
 
+            // flush
             await ProcessBatch().ConfigureAwait(false);
         }
 
@@ -103,18 +114,8 @@ namespace PodcastDownloader.Logging
             // Write the current batch out
             if (batch.Any())
             {
-                await WriteMessagesAsync(batch, cancellationTokenSource.Token).ConfigureAwait(false);
-            }
-        }
-
-        private static async Task WriteMessagesAsync(List<LogMessage> messages, CancellationToken token)
-        {
-            using (var sw = new StreamWriter(logFile.FullName, true))
-            {
-                foreach (var msg in messages)
-                {
-                    await sw.WriteLineAsync(msg.ToString());
-                }
+                var tasks = logTargets.Select(t => t.WriteBatchAsync(batch)).ToList();
+                await Task.WhenAll(tasks);
             }
         }
     }

@@ -62,6 +62,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Actors\FeedDownloader.cs" />
+    <Compile Include="Logging\FancyConsoleLogger.cs" />
+    <Compile Include="Logging\FileLogger.cs" />
+    <Compile Include="Logging\ILogTarget.cs" />
     <Compile Include="Logging\Logger.cs" />
     <Compile Include="Logging\LogMessage.cs" />
     <Compile Include="Logging\LogSeverity.cs" />

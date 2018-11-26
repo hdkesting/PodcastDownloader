@@ -108,10 +108,10 @@ namespace PodcastDownloader.Logging
         {
             switch (severity)
             {
-                case LogSeverity.Debug: return "DBUG";
+                case LogSeverity.Debug: return " DBG";
                 case LogSeverity.Information: return "INFO";
                 case LogSeverity.Warning: return "WARN";
-                case LogSeverity.Error: return "ERR";
+                case LogSeverity.Error: return " ERR";
                 case LogSeverity.Failure: return "FAIL";
                 default: throw new InvalidOperationException("Unknown log severity: " + severity);
             }

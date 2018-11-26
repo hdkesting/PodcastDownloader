@@ -99,7 +99,7 @@ namespace PodcastDownloader.Actors
             bool haschild = false;
             foreach (var item in this.podcast.Items.Where(it => it.PublishDate > latest).OrderBy(it => it.PublishDate))
             {
-                Console.WriteLine("Podcast: " + item.Title.Text);
+                Logger.Log(LogSeverity.Information, LogCategory, "Podcast: " + item.Title.Text);
                 if (item.Links != null)
                 {
                     foreach (var link in item.Links.Where(l => l.RelationshipType == "enclosure"))
@@ -125,7 +125,7 @@ namespace PodcastDownloader.Actors
 
             if (!haschild)
             {
-                Logger.Log(LogSeverity.Information, LogCategory, "Nothing found to download.");
+                Logger.Log(LogSeverity.Warning, LogCategory, "Nothing found to download.");
                 this.Self.Tell(QueueIsDoneMessage);
             }
         }

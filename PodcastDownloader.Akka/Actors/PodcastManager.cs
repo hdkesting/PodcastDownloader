@@ -103,7 +103,7 @@ namespace PodcastDownloader.Actors
                 case FeedIsDoneMessage:
                     this.feedReaders.RemoveAll(actor => actor.Path == Context.Sender.Path);
                     Context.Stop(Context.Sender);
-                    Logger.Log(LogSeverity.Debug, LogCategory, $"#feeds left == {this.feedReaders.Count}: {string.Join(", ", this.feedReaders.Select(a => a.Path.Name))}.");
+                    Logger.Log(LogSeverity.Information, LogCategory, $"#feeds left == {this.feedReaders.Count}: {string.Join(", ", this.feedReaders.Select(a => a.Path.Name))}.");
 
                     if (this.feedReaders.Count == 0)
                     {
