@@ -46,10 +46,20 @@ namespace PodcastDownloader
 
             await Logger.StopLogging();
 
+            Countdown(7);
+
 #if DEBUG
             Console.WriteLine("Press <enter>.");
             Console.ReadLine();
 #endif
+        }
+
+        private static void Countdown(int count)
+        {
+            for (int i = count; i >= 0; i--)
+            {
+                Console.Write(new string('*', i) + " \r");
+            }
         }
     }
 }
