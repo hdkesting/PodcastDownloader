@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "PodcastDownloader.Docker": {
+      "commandName": "Project"
+    },
+    "Docker": {
+      "commandName": "Docker"
+    }
+  }
+}
