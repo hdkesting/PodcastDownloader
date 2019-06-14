@@ -39,60 +39,35 @@ namespace PodcastDownloader
                 return;
             }
 
-            try
+            this.feed.LatestError = null;
+            if (this.feed.LatestDownload.Year < 2000)
             {
-                using (XmlReader reader = XmlReader.Create(this.feed.Url, new XmlReaderSettings { Async = true }))
-                {
-                    await this.ProcessFeed(reader);
-                }
+                this.feed.LatestDownload = DateTimeOffset.Now.AddMonths(-1);
             }
-            catch (Exception ex)
-            {
-                Logger.Log(LogLevel.Error, nameof(Downloader), nameof(this.Process), ex);
 
-                // might happen because of url encoding in url
-                //     <atom:link href="http://www.pwop.com%2ffeed.aspx%3fshow%3dHanselminutes" rel="self" type="application/rss+xml" />
-                /*
+            bool retry;
+            do
+            {
+                retry = false;
                 try
                 {
-                    podcast = TryDecodingUrl(this.feed.Url);
+                    using (XmlReader reader = XmlReader.Create(this.feed.Url, new XmlReaderSettings { Async = true, }))
+                    {
+                        await this.ProcessFeed(reader);
+                    }
                 }
-                catch (Exception ex2)
+                catch (WebException wex) when (new[] { HttpStatusCode.Moved, HttpStatusCode.MovedPermanently }.Contains(((HttpWebResponse)wex.Response).StatusCode))
                 {
-                    this.feed.LatestError = ex2.Message;
-                    WriteException(ex2);
-                    return;
+                    this.feed.Url = ((System.Net.HttpWebResponse)wex.Response).Headers["Location"];
+
+                    retry = true;
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log(LogLevel.Error, nameof(Downloader), nameof(this.Process), ex);
                 }
 
-                if (podcast == null)
-                {
-                    this.logger.WriteLine($"Error loading podcast {this.feed.Name}.");
-                    this.feed.LatestError = ex.Message;
-                    WriteException(ex);
-                    return;
-                }
-                */
-            }
-
-            /*
-            this.feed.Name = feedReader.
-
-            DateTimeOffset latest = this.feed.LatestDownload;
-            foreach (var item in podcast.Items.Where(it => it.PublishDate > this.feed.LatestDownload).OrderBy(it => it.PublishDate))
-            {
-                foreach (var link in item.Links.Where(l => l.RelationshipType == "enclosure"))
-                {
-                    DownloadFile(link.Uri, item.PublishDate);
-                }
-
-                if (item.PublishDate > latest)
-                {
-                    latest = item.PublishDate;
-                    this.feed.LatestDownload = latest;
-                    this.feed.LatestError = String.Empty;
-                }
-            }
-            */
+            } while (retry);
         }
 
         /// <summary>
@@ -107,6 +82,8 @@ namespace PodcastDownloader
         {
             // https://github.com/dotnet/SyndicationFeedReaderWriter
             var feedReader = new RssFeedReader(reader);
+
+            var latest = this.feed.LatestDownload;
 
             while (await feedReader.Read())
             {
@@ -125,13 +102,22 @@ namespace PodcastDownloader
                     // Read Item
                     case SyndicationElementType.Item:
                         ISyndicationItem item = await feedReader.ReadItem();
-                        // item.Links ...
+                        var lnk = item.Links.FirstOrDefault(l => l.RelationshipType == "enclosure");
+                        var pubdate = item.Published.Year > 2000 ? item.Published : item.LastUpdated;
+                        if (lnk != null && pubdate > this.feed.LatestDownload)
+                        {
+                            await this.DownloadFile(lnk.Uri, pubdate);
+                            if (pubdate > latest)
+                            {
+                                latest = item.Published;
+                            }
+                        }
+
                         break;
 
                     // Read link
                     case SyndicationElementType.Link:
                         ISyndicationLink link = await feedReader.ReadLink();
-                        await this.DownloadFile(link.Uri, link.LastUpdated);
                         break;
 
                     // Read Person
@@ -142,9 +128,16 @@ namespace PodcastDownloader
                     // Read content
                     default:
                         ISyndicationContent content = await feedReader.ReadContent();
+                        if (content.Name == "title")
+                        {
+                            this.feed.Name = content.Value;
+                        }
+
                         break;
                 }
             }
+
+            this.feed.LatestDownload = latest;
         }
 
         private async Task DownloadFile(Uri linkUri, DateTimeOffset pubdate)
@@ -176,7 +169,7 @@ namespace PodcastDownloader
                 {
                     var ext = Path.GetExtension(file);
                     file = Path.GetFileNameWithoutExtension(file);
-                    file = file + pubdate.ToString("-yyyy-MM-dd") + ext;
+                    file = file + "@" + pubdate.ToString("yyyy-MM-dd") + ext;
                     path = Path.Combine(folder, file);
 
                     Logger.Log(LogLevel.Information, nameof(Downloader), $"{this.feed.Name}: {file}");
@@ -206,6 +199,7 @@ namespace PodcastDownloader
                     var fi = new FileInfo(path);
 #pragma warning restore IDE0017 // Simplify object initialization
                     fi.CreationTimeUtc = pubdate.UtcDateTime;
+                    fi.LastWriteTimeUtc = pubdate.UtcDateTime;
 
                     Logger.Log(LogLevel.Debug, nameof(Downloader), $"Downloaded file {path}.");
                 }

@@ -5,6 +5,7 @@
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <RootNamespace>PodcastDownloader</RootNamespace>
+    <DockerfileRunArguments>-v "C:\temp\feeds:/feeds"</DockerfileRunArguments>
   </PropertyGroup>
 
   <ItemGroup>

@@ -26,6 +26,7 @@ namespace PodcastDownloader.Logging
         /// <param name="logFolder">The log folder.</param>
         public LogWriter(string logFolder)
         {
+            Directory.CreateDirectory(logFolder);
             this.logfilePath = Path.Combine(logFolder, "pcdl_" + DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + ".log");
             this.logFolder = logFolder;
         }

@@ -16,7 +16,6 @@ namespace PodcastDownloader
         private const string ConfigName = "FeedConfig.json";
         private static readonly object SaveLock = new object();
         private readonly string configPath;
-        private readonly DirectoryInfo basePath;
 
         private FeedConfig currentConfig;
 
@@ -26,13 +25,17 @@ namespace PodcastDownloader
         /// <param name="basePath">The base path.</param>
         public ConfigManager(DirectoryInfo basePath)
         {
-            this.basePath = basePath ?? throw new ArgumentException("A basepath is required.", nameof(basePath));
+            if (basePath == null)
+            {
+                throw new ArgumentException("A basepath is required.", nameof(basePath));
+            }
+
             if (!basePath.Exists)
             {
                 basePath.Create();
             }
 
-            this.configPath = Path.Combine(this.basePath.FullName, ConfigName);
+            this.configPath = Path.Combine(basePath.FullName, ConfigName);
         }
 
         /// <summary>
@@ -53,8 +56,7 @@ namespace PodcastDownloader
                 else
                 {
                     // create one!
-                    this.currentConfig = new FeedConfig();
-                    this.InitializeConfig(this.currentConfig);
+                    this.currentConfig = InitializeConfig();
                     this.SaveCurrentConfig();
                 }
             }
@@ -80,14 +82,18 @@ namespace PodcastDownloader
             }
         }
 
-        private void InitializeConfig(FeedConfig config)
+        private static FeedConfig InitializeConfig()
         {
+            var config = new FeedConfig();
+
             config.Feeds.Add(new FeedDefinition
             {
                 Name = "dotnetrocks",
                 LatestDownload = DateTime.Today.AddDays(-7),
                 Url = "http://www.pwop.com/feed.aspx?show=dotnetrocks&filetype=master",
             });
+
+            return config;
         }
     }
 }

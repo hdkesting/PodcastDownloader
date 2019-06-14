@@ -30,6 +30,9 @@ namespace PodcastDownloader
 
                 await ProcessConfig(LocalPath);
 
+#if DEBUG
+                break;
+#endif
                 await Task.Delay(TimeSpan.FromHours(12));
             }
         }
