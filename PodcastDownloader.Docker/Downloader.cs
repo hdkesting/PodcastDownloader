@@ -11,16 +11,24 @@ namespace PodcastDownloader
     using System.Net;
     using System.Threading.Tasks;
     using System.Xml;
-    using System.Xml.Linq;
     using Microsoft.SyndicationFeed;
     using Microsoft.SyndicationFeed.Rss;
     using PodcastDownloader.Logging;
 
+    /// <summary>
+    /// Manager for downloading a feed.
+    /// </summary>
     internal sealed class Downloader : IDisposable
     {
         private readonly FeedDefinition feed;
         private readonly string baseDownloadPath;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Downloader"/> class.
+        /// </summary>
+        /// <param name="feed">The feed.</param>
+        /// <param name="basePath">The base path.</param>
+        /// <exception cref="ArgumentNullException">feed cannot be null.</exception>
         public Downloader(FeedDefinition feed, DirectoryInfo basePath)
         {
             this.feed = feed ?? throw new ArgumentNullException(nameof(feed));
@@ -45,8 +53,8 @@ namespace PodcastDownloader
                 this.feed.LatestDownload = DateTimeOffset.Now.AddMonths(-1);
             }
 
-            bool retry;
-            do
+            bool retry = true;
+            while (retry)
             {
                 retry = false;
                 try
@@ -58,6 +66,7 @@ namespace PodcastDownloader
                 }
                 catch (WebException wex) when (new[] { HttpStatusCode.Moved, HttpStatusCode.MovedPermanently }.Contains(((HttpWebResponse)wex.Response).StatusCode))
                 {
+                    // apparently moved to another location
                     this.feed.Url = ((System.Net.HttpWebResponse)wex.Response).Headers["Location"];
 
                     retry = true;
@@ -66,8 +75,7 @@ namespace PodcastDownloader
                 {
                     Logger.Log(LogLevel.Error, nameof(Downloader), nameof(this.Process), ex);
                 }
-
-            } while (retry);
+            }
         }
 
         /// <summary>
@@ -91,12 +99,12 @@ namespace PodcastDownloader
                 {
                     // Read category
                     case SyndicationElementType.Category:
-                        ISyndicationCategory category = await feedReader.ReadCategory();
+                        _ = await feedReader.ReadCategory();
                         break;
 
                     // Read Image
                     case SyndicationElementType.Image:
-                        ISyndicationImage image = await feedReader.ReadImage();
+                        _ = await feedReader.ReadImage();
                         break;
 
                     // Read Item
@@ -117,12 +125,12 @@ namespace PodcastDownloader
 
                     // Read link
                     case SyndicationElementType.Link:
-                        ISyndicationLink link = await feedReader.ReadLink();
+                        _ = await feedReader.ReadLink();
                         break;
 
                     // Read Person
                     case SyndicationElementType.Person:
-                        ISyndicationPerson person = await feedReader.ReadPerson();
+                        _ = await feedReader.ReadPerson();
                         break;
 
                     // Read content
@@ -146,35 +154,23 @@ namespace PodcastDownloader
 
             this.EnsureFolderExists(folder);
 
-            // get file name from URL and prefix with feed name
+            // get file name from URL and prefix with feed name and pubdate
             var file = linkUri.Segments.Last();
-            file = this.feed.Name + " - " + file;
+            file = $"{this.feed.Name} - {pubdate:yyyy-MM-dd} - {file}";
 
             file = this.CleanupFilename(file);
 
             var path = Path.Combine(folder, file);
             var fi = new FileInfo(path);
 
-            // a) bestaat nog niet -- prima, schrijven
-            // b) bestaat al met ~ zelfde tijd -- al gedaan, overslaan
-            // c) bestaat met andere tijd -- schrijf onder nieuwe naam
+            /*
+            // a) doesn't exist -- great, download & write
+            // b) already exists  -- fine, skip
+            */
 
             if (fi.Exists)
             {
-                if (Math.Abs((pubdate - fi.CreationTimeUtc).TotalHours) < 1.0)
-                {
-                    Logger.Log(LogLevel.Information, nameof(Downloader), $"File already downloaded: {file}, skipping.");
-                }
-                else
-                {
-                    var ext = Path.GetExtension(file);
-                    file = Path.GetFileNameWithoutExtension(file);
-                    file = file + "@" + pubdate.ToString("yyyy-MM-dd") + ext;
-                    path = Path.Combine(folder, file);
-
-                    Logger.Log(LogLevel.Information, nameof(Downloader), $"{this.feed.Name}: {file}");
-                    await this.DownloadFileToLocal(linkUri, path, pubdate);
-                }
+                Logger.Log(LogLevel.Information, nameof(Downloader), $"File already downloaded: {file}, skipping.");
             }
             else
             {
@@ -183,31 +179,31 @@ namespace PodcastDownloader
             }
         }
 
-        private async Task DownloadFileToLocal(Uri uri, string path, DateTimeOffset pubdate)
+        private async Task DownloadFileToLocal(Uri sourceUri, string targetPath, DateTimeOffset pubdate)
         {
             try
             {
-                var request = WebRequest.Create(uri);
+                var request = WebRequest.Create(sourceUri);
                 using (var response = request.GetResponse())
                 {
-                    using (var wrt = File.OpenWrite(path))
+                    using (var wrt = File.OpenWrite(targetPath))
                     {
                         await response.GetResponseStream()?.CopyToAsync(wrt);
                     }
 
 #pragma warning disable IDE0017 // Simplify object initialization
-                    var fi = new FileInfo(path);
+                    var fi = new FileInfo(targetPath);
 #pragma warning restore IDE0017 // Simplify object initialization
                     fi.CreationTimeUtc = pubdate.UtcDateTime;
                     fi.LastWriteTimeUtc = pubdate.UtcDateTime;
 
-                    Logger.Log(LogLevel.Debug, nameof(Downloader), $"Downloaded file {path}.");
+                    Logger.Log(LogLevel.Debug, nameof(Downloader), $"Downloaded file {targetPath}.");
                 }
             }
             catch (Exception)
             {
                 // remove possibly partially downloaded file
-                File.Delete(path);
+                File.Delete(targetPath);
                 throw;
             }
         }
@@ -231,42 +227,5 @@ namespace PodcastDownloader
 
         private void EnsureFolderExists(string folderName)
                 => Directory.CreateDirectory(folderName);
-
-        /*
-        private SyndicationFeed TryDecodingUrl(string feedUrl)
-        {
-            //     <atom:link href="http://www.pwop.com%2ffeed.aspx%3fshow%3dHanselminutes" rel="self" type="application/rss+xml" />
-            // need to "decode" that href
-
-            XDocument xml;
-
-            var request = WebRequest.Create(this.feed.Url);
-            using (var response = request.GetResponse())
-            {
-                xml = XDocument.Load(response.GetResponseStream());
-            }
-
-            var atom = xml.Root.GetNamespaceOfPrefix("atom");
-
-            foreach (var linknode in xml.Root.Descendants(atom + "link"))
-            {
-                var hrefAttr = linknode.Attributes("href").First();
-                var href = hrefAttr.Value;
-                hrefAttr.Value = HttpUtility.UrlDecode(href);
-            }
-
-            try
-            {
-                var podcast = SyndicationFeed.Load(xml.CreateReader());
-                return podcast;
-            }
-            catch (Exception ex)
-            {
-                this.logger.WriteLine($"Fixing feed {this.feed.Name} didn't work.");
-                WriteException(ex);
-                return null;
-            }
-        }
-        */
     }
 }

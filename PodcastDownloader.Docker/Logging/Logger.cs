@@ -11,13 +11,16 @@ namespace PodcastDownloader.Logging
     /// <summary>
     /// Provides logging to file.
     /// </summary>
-    public static partial class Logger
+    public static class Logger
     {
         private const string Name = "System";
+        private const int MaxEmptyFlushes = 10;
 
-        private static TimeSpan flushTime = TimeSpan.FromSeconds(1);
+        private static TimeSpan flushTime = TimeSpan.FromSeconds(2);
         private static LogWriter logWriter;
-        private static System.Threading.Timer timer;
+        private static System.Threading.Timer flushTimer;
+        private static int emptyFlushCount;
+        private static bool stoppedFlushing;
 
         /// <summary>
         /// (Re-)initializes this instance.
@@ -31,8 +34,20 @@ namespace PodcastDownloader.Logging
 
             Log(LogLevel.Information, Name, "App startup");
 
-            timer = new System.Threading.Timer(_ => logWriter.Flush(), null, flushTime, flushTime);
-            Task.Run(() => logWriter.Cleanup());
+            // initialize, but don't start. Wait for the first message to arrive.
+            flushTimer = new System.Threading.Timer(_ => Flusher());
+            emptyFlushCount = 0;
+            stoppedFlushing = false;
+
+            Task.Run(() => Cleanup());
+        }
+
+        /// <summary>
+        /// Cleans up the old logs.
+        /// </summary>
+        public static void Cleanup()
+        {
+            logWriter.Cleanup();
         }
 
         /// <summary>
@@ -41,8 +56,8 @@ namespace PodcastDownloader.Logging
         public static void Shutdown()
         {
             Log(LogLevel.Information, Name, "App shutdown");
-            timer.Change(-1, -1);
-            timer.Dispose();
+            flushTimer.Change(-1, -1);
+            flushTimer.Dispose();
             logWriter.Flush();
             logWriter = null;
         }
@@ -58,6 +73,39 @@ namespace PodcastDownloader.Logging
         {
             var msg = new LogMessage(level, pageName, message, exception);
             logWriter.Add(msg);
+
+            lock (logWriter)
+            {
+                if (stoppedFlushing)
+                {
+                    // timer was stopped, but a new message arrived, so start up
+                    stoppedFlushing = false;
+                    emptyFlushCount = 0;
+                    flushTimer.Change(flushTime, flushTime);
+                }
+            }
+        }
+
+        private static void Flusher()
+        {
+            if (logWriter.Flush())
+            {
+                emptyFlushCount = 0;
+            }
+            else
+            {
+                emptyFlushCount++;
+
+                if (emptyFlushCount > MaxEmptyFlushes)
+                {
+                    // lots of empty flushes, so stop timer
+                    lock (logWriter)
+                    {
+                        stoppedFlushing = true;
+                        flushTimer.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+                    }
+                }
+            }
         }
     }
 }

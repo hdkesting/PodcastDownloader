@@ -65,24 +65,36 @@ namespace PodcastDownloader.Logging
         }
 
         /// <summary>
-        /// Flushes the queued messages to the file.
+        /// Flushes all queued messages to the file.
         /// </summary>
-        internal void Flush()
+        /// <returns><c>true</c> when messages were flushed.</returns>
+        internal bool Flush()
         {
+            var logcopy = new List<LogMessage>();
+
             lock (this.messageQueue)
             {
-                if (this.messageQueue.Count > 0)
+                while (this.messageQueue.Count > 0)
                 {
-                    using (var sw = File.AppendText(this.logfilePath))
-                    {
-                        while (this.messageQueue.Count > 0)
-                        {
-                            var msg = this.messageQueue.Dequeue();
-                            sw.WriteLine(msg.ToString());
-                        }
-                    }
+                    var msg = this.messageQueue.Dequeue();
+                    logcopy.Add(msg);
                 }
             }
+
+            if (logcopy.Any())
+            {
+                using (var sw = File.AppendText(this.logfilePath))
+                {
+                    foreach (var msg in logcopy)
+                    {
+                        sw.WriteLine(msg.ToString());
+                    }
+                }
+
+                return true;
+            }
+
+            return false;
         }
     }
 }

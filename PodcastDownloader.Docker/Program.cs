@@ -15,6 +15,7 @@ namespace PodcastDownloader
     /// </summary>
     public static class Program
     {
+        // docker must be configured to mount an external folder on this path.
         private static readonly DirectoryInfo LocalPath = new DirectoryInfo("/feeds");
 
         /// <summary>
@@ -29,6 +30,8 @@ namespace PodcastDownloader
                 Logger.Initialize(LocalPath);
 
                 await ProcessConfig(LocalPath);
+
+                Logger.Cleanup();
 
 #if DEBUG
                 break;
