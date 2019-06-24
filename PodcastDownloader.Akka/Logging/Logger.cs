@@ -13,13 +13,13 @@ namespace PodcastDownloader.Logging
     /// <summary>
     /// The logger (logging to console + a file).
     /// </summary>
-    public class Logger
+    public static class Logger
     {
         private static readonly List<LogMessage> LogMessages = new List<LogMessage>();
-        private static CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-        private static Task outputTask;
+        private static readonly CancellationTokenSource CancellationTokenSource = new CancellationTokenSource();
+        private static readonly List<ILogTarget> LogTargets = new List<ILogTarget>();
 
-        private static List<ILogTarget> logTargets = new List<ILogTarget>();
+        private static Task outputTask;
 
         private static TimeSpan Interval { get; } = TimeSpan.FromSeconds(2);
 
@@ -51,10 +51,10 @@ namespace PodcastDownloader.Logging
         /// Adds the log target.
         /// </summary>
         /// <param name="target">The target.</param>
-        /// <exception cref="ArgumentNullException">target</exception>
+        /// <exception cref="ArgumentNullException">target cannot be null.</exception>
         public static void AddTarget(ILogTarget target)
         {
-            logTargets.Add(target ?? throw new ArgumentNullException(nameof(target)));
+            LogTargets.Add(target ?? throw new ArgumentNullException(nameof(target)));
         }
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace PodcastDownloader.Logging
         public static void StartLogging()
         {
             // task needs to run in parallel, continuously
-            outputTask = Task.Run(ProcessLogQueue, cancellationTokenSource.Token);
+            outputTask = Task.Run(ProcessLogQueue, CancellationTokenSource.Token);
         }
 
         /// <summary>
@@ -74,12 +74,13 @@ namespace PodcastDownloader.Logging
         {
             try
             {
-                cancellationTokenSource.Cancel();
+                CancellationTokenSource.Cancel();
 
                 await outputTask;
             }
             catch (OperationCanceledException)
             {
+                // ignore
             }
 
             // flush
@@ -88,12 +89,12 @@ namespace PodcastDownloader.Logging
 
         private static async Task ProcessLogQueue()
         {
-            while (!cancellationTokenSource.IsCancellationRequested)
+            while (!CancellationTokenSource.IsCancellationRequested)
             {
                 await ProcessBatch().ConfigureAwait(false);
 
                 // Wait before writing the next batch
-                await Task.Delay(Interval, cancellationTokenSource.Token).ConfigureAwait(false);
+                await Task.Delay(Interval, CancellationTokenSource.Token).ConfigureAwait(false);
             }
         }
 
@@ -114,7 +115,7 @@ namespace PodcastDownloader.Logging
             // Write the current batch out
             if (batch.Any())
             {
-                var tasks = logTargets.Select(t => t.WriteBatchAsync(batch)).ToList();
+                var tasks = LogTargets.Select(t => t.WriteBatchAsync(batch)).ToList();
                 await Task.WhenAll(tasks);
             }
         }

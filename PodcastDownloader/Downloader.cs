@@ -60,7 +60,7 @@ namespace PodcastDownloader
                 //     <atom:link href="http://www.pwop.com%2ffeed.aspx%3fshow%3dHanselminutes" rel="self" type="application/rss+xml" />
                 try
                 {
-                    podcast = TryDecodingUrl(this.feed.Url);
+                    podcast = TryDecodingUrl();
                 }
                 catch (Exception ex2)
                 {
@@ -206,7 +206,7 @@ namespace PodcastDownloader
             }
         }
 
-        private SyndicationFeed TryDecodingUrl(string feedUrl)
+        private SyndicationFeed TryDecodingUrl()
         {
             //     <atom:link href="http://www.pwop.com%2ffeed.aspx%3fshow%3dHanselminutes" rel="self" type="application/rss+xml" />
             // need to "decode" that href

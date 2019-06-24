@@ -38,7 +38,7 @@ namespace PodcastDownloader
                 string configFile = Path.Combine(
                             System.Configuration.ConfigurationManager.AppSettings["BasePath"],
                             ConfigName);
-                var feedDownloadActor = system.ActorOf(Props.Create(() => new Actors.PodcastManager(configFile)));
+                _ = system.ActorOf(Props.Create(() => new Actors.PodcastManager(configFile)));
 
                 // wait for system to finish, then automatically exit
                 await system.WhenTerminated;

@@ -32,6 +32,6 @@ namespace PodcastDownloader.Logging
         /// <summary>
         /// The failure message (exception occurred).
         /// </summary>
-        Failure
+        Failure,
     }
 }

@@ -154,7 +154,7 @@ namespace PodcastDownloader.Actors
             {
                 Name = "dotnetrocks",
                 LatestDownload = DateTime.Today.AddDays(-7),
-                Url = "http://www.pwop.com/feed.aspx?show=dotnetrocks&filetype=master"
+                Url = "http://www.pwop.com/feed.aspx?show=dotnetrocks&filetype=master",
             });
         }
     }

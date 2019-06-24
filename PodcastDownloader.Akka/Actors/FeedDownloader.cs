@@ -132,18 +132,13 @@ namespace PodcastDownloader.Actors
 
         private SyndicationFeed LoadFeed()
         {
-            SyndicationFeed podcast = null;
+            SyndicationFeed localpodcast = null;
 
             try
             {
                 using (XmlReader reader = XmlReader.Create(this.config.Url))
                 {
-                    podcast = SyndicationFeed.Load(reader);
-                    ////if (podcast == null)
-                    ////{
-                    ////    // this.logger.WriteLine($"No podcast found at {this.feed.Url}.");
-                    ////    return;
-                    ////}
+                    localpodcast = SyndicationFeed.Load(reader);
                 }
             }
             catch (Exception)
@@ -152,23 +147,15 @@ namespace PodcastDownloader.Actors
                 //     <atom:link href="http://www.pwop.com%2ffeed.aspx%3fshow%3dHanselminutes" rel="self" type="application/rss+xml" />
                 try
                 {
-                    podcast = this.TryDecodingUrl(this.config.Url);
+                    localpodcast = this.TryDecodingUrl(this.config.Url);
                 }
                 catch (Exception ex2)
                 {
                     this.Self.Tell(new ErrorMessage(ex2));
                 }
-
-                ////if (podcast == null)
-                ////{
-                ////    this.logger.WriteLine($"Error loading podcast {this.feed.Name}.");
-                ////    this.feed.LatestError = ex.Message;
-                ////    WriteException(ex);
-                ////    return;
-                ////}
             }
 
-            return podcast;
+            return localpodcast;
         }
 
         private SyndicationFeed TryDecodingUrl(string feedUrl)
@@ -194,8 +181,8 @@ namespace PodcastDownloader.Actors
 
             try
             {
-                var podcast = SyndicationFeed.Load(xml.CreateReader());
-                return podcast;
+                var newpodcast = SyndicationFeed.Load(xml.CreateReader());
+                return newpodcast;
             }
             catch (Exception ex)
             {
