@@ -44,6 +44,7 @@ namespace PodcastDownloader
         {
             if (string.IsNullOrWhiteSpace(this.feed.Url))
             {
+                Logger.Log(LogLevel.Warning, nameof(Downloader), "Skipping because URL is empty.");
                 return;
             }
 

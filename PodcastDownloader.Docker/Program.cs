@@ -69,10 +69,13 @@ namespace PodcastDownloader
         {
             try
             {
+                Logger.Log(LogLevel.Information, nameof(Program), $">> Starting on feed '{feed.Name}' from {feed.LatestDownload:yyyy-MM-dd}.");
                 using (var dl = new Downloader(feed, basePath))
                 {
                     await dl.Process();
                 }
+
+                Logger.Log(LogLevel.Information, nameof(Program), $"<< Finished feed {feed.Name}. Up to date until {feed.LatestDownload:yyyy-MM-dd}.");
 
                 return true;
             }

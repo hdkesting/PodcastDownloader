@@ -6,7 +6,6 @@ namespace PodcastDownloader.Logging
 {
     using System;
     using System.IO;
-    using System.Threading.Tasks;
 
     /// <summary>
     /// Provides logging to file.
@@ -14,7 +13,7 @@ namespace PodcastDownloader.Logging
     public static class Logger
     {
         private const string Name = "System";
-        private const int MaxEmptyFlushes = 10;
+        private const int MaxEmptyFlushes = 20; // @ 2 secs each (see flushTime)
 
         private static TimeSpan flushTime = TimeSpan.FromSeconds(2);
         private static LogWriter logWriter;
@@ -28,18 +27,16 @@ namespace PodcastDownloader.Logging
         /// <param name="basePath">The base path, the "logs" folder will be below this.</param>
         public static void Initialize(DirectoryInfo basePath)
         {
+            // initialize, but don't start. Wait for the first message to arrive.
+            flushTimer = new System.Threading.Timer(_ => Flusher());
+            emptyFlushCount = 0;
+            stoppedFlushing = true;
+
             logWriter?.Flush();
 
             logWriter = new LogWriter(Path.Combine(basePath.FullName, "logs"));
 
             Log(LogLevel.Information, Name, "App startup");
-
-            // initialize, but don't start. Wait for the first message to arrive.
-            flushTimer = new System.Threading.Timer(_ => Flusher());
-            emptyFlushCount = 0;
-            stoppedFlushing = false;
-
-            Task.Run(() => Cleanup());
         }
 
         /// <summary>
@@ -82,6 +79,7 @@ namespace PodcastDownloader.Logging
                     stoppedFlushing = false;
                     emptyFlushCount = 0;
                     flushTimer.Change(flushTime, flushTime);
+                    Log(LogLevel.Debug, nameof(Logger), "Resumed log flushing >>>>.");
                 }
             }
         }
@@ -101,8 +99,11 @@ namespace PodcastDownloader.Logging
                     // lots of empty flushes, so stop timer
                     lock (logWriter)
                     {
-                        stoppedFlushing = true;
                         flushTimer.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+                        Log(LogLevel.Debug, nameof(Logger), "Paused log flushing <<<<.");
+                        logWriter.Flush();
+
+                        stoppedFlushing = true;
                     }
                 }
             }

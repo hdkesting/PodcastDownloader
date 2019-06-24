@@ -55,6 +55,7 @@ namespace PodcastDownloader.Logging
                 var files = di.GetFiles();
                 foreach (var file in files.Where(fi => fi.LastWriteTime < oldestToKeep))
                 {
+                    Logger.Log(LogLevel.Information, nameof(LogWriter), $"Removing old log file {file}.");
                     file.Delete();
                 }
             }
