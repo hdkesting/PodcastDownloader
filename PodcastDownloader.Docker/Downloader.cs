@@ -115,7 +115,7 @@ namespace PodcastDownloader
                         var pubdate = item.Published.Year > 2000 ? item.Published : item.LastUpdated;
                         if (lnk != null && pubdate > this.feed.LatestDownload)
                         {
-                            await this.DownloadFile(lnk.Uri, pubdate);
+                            await this.DownloadFile(lnk.Uri, this.feed.Name, pubdate, item.Title);
                             if (pubdate > latest)
                             {
                                 latest = item.Published;
@@ -137,8 +137,9 @@ namespace PodcastDownloader
                     // Read content
                     default:
                         ISyndicationContent content = await feedReader.ReadContent();
-                        if (content.Name == "title")
+                        if (string.IsNullOrWhiteSpace(this.feed.Name) && content.Name == "title")
                         {
+                            // only set if not already set
                             this.feed.Name = content.Value;
                         }
 
@@ -149,17 +150,14 @@ namespace PodcastDownloader
             this.feed.LatestDownload = latest;
         }
 
-        private async Task DownloadFile(Uri linkUri, DateTimeOffset pubdate)
+        private async Task DownloadFile(Uri linkUri, string feedName, DateTimeOffset pubdate, string itemTitle)
         {
             var folder = this.baseDownloadPath;
 
             this.EnsureFolderExists(folder);
 
             // get file name from URL and prefix with feed name and pubdate
-            var file = linkUri.Segments.Last();
-            file = $"{this.feed.Name} - {pubdate:yyyy-MM-dd} - {file}";
-
-            file = this.CleanupFilename(file);
+            var file = this.BuildFilename(linkUri, feedName, pubdate, itemTitle);
 
             var path = Path.Combine(folder, file);
             var fi = new FileInfo(path);
@@ -178,6 +176,24 @@ namespace PodcastDownloader
                 Logger.Log(LogLevel.Information, nameof(Downloader), $"{this.feed.Name}: {file}");
                 await this.DownloadFileToLocal(linkUri, path, pubdate);
             }
+        }
+
+        private string BuildFilename(Uri linkUri, string feedName, DateTimeOffset pubdate, string itemTitle)
+        {
+            const int maxLength = 50;
+
+            if (itemTitle.Length > maxLength)
+            {
+                itemTitle = itemTitle.Substring(0, maxLength);
+            }
+
+            itemTitle = itemTitle.Replace(".", "·");
+
+            // GetExtension includes the .
+            var file = $"{feedName} - {pubdate:yyyy-MM-dd} - {itemTitle}{Path.GetExtension(linkUri.Segments.Last())}";
+            file = this.CleanupFilename(file);
+
+            return file;
         }
 
         private async Task DownloadFileToLocal(Uri sourceUri, string targetPath, DateTimeOffset pubdate)
@@ -213,10 +229,7 @@ namespace PodcastDownloader
         {
             var invalid = Path.GetInvalidFileNameChars();
             var newname = new string(file.Where(c => !invalid.Contains(c)).ToArray());
-            if (newname.StartsWith("."))
-            {
-                newname = newname.TrimStart('.');
-            }
+            newname = newname.TrimStart('.');
 
             if (newname != file)
             {

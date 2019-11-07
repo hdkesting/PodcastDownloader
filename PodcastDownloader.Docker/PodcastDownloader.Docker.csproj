@@ -6,6 +6,7 @@
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <RootNamespace>PodcastDownloader</RootNamespace>
     <DockerfileRunArguments>-v "C:\temp\feeds:/feeds"</DockerfileRunArguments>
+    <Authors>Hans Kesting</Authors>
   </PropertyGroup>
 
   <ItemGroup>
