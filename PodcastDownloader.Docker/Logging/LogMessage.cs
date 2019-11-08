@@ -82,7 +82,7 @@ namespace PodcastDownloader.Logging
                 case LogLevel.Information: lvl = "INF"; break;
                 case LogLevel.Warning: lvl = "WRN"; break;
                 case LogLevel.Error: lvl = "ERR"; break;
-                default: throw new InvalidOperationException("Unknown level: " + this.Level);
+                default: lvl = this.Level.ToString(); break;
             }
 
             return $"{this.TimeStamp:HH:mm:ss} [{lvl}] {this.PageName} - {this.Message}" + DumpException(this.Exception);

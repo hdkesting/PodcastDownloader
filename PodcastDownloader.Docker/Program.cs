@@ -25,19 +25,21 @@ namespace PodcastDownloader
         /// <returns>A Task.</returns>
         public static async Task Main(string[] args)
         {
+#if !DEBUG
             while (true)
             {
+#endif
                 Logger.Initialize(LocalPath);
+                Logger.Log(LogLevel.Information, "Main", "Version " + typeof(Program).Assembly.GetName().Version.ToString());
 
                 await ProcessConfig(LocalPath);
 
                 Logger.Cleanup();
 
-#if DEBUG
-                break;
-#endif
+#if !DEBUG
                 await Task.Delay(TimeSpan.FromHours(12));
             }
+#endif
         }
 
         private static async Task ProcessConfig(DirectoryInfo basePath)

@@ -187,7 +187,7 @@ namespace PodcastDownloader
                 itemTitle = itemTitle.Substring(0, maxLength);
             }
 
-            itemTitle = itemTitle.Replace(".", "·");
+            itemTitle = itemTitle.Replace(".", "·").Trim();
 
             // GetExtension includes the .
             var file = $"{feedName} - {pubdate:yyyy-MM-dd} - {itemTitle}{Path.GetExtension(linkUri.Segments.Last())}";
@@ -227,8 +227,12 @@ namespace PodcastDownloader
 
         private string CleanupFilename(string file)
         {
-            var invalid = Path.GetInvalidFileNameChars();
-            var newname = new string(file.Where(c => !invalid.Contains(c)).ToArray());
+            // GetInvalidFileNameChars works for local filesystem == Linux
+            var invalidLocal = Path.GetInvalidFileNameChars();
+
+            // but mounted/viewed on windows, so also check that explicitly
+            var invalidWindows = new[] { '\\', '/', ':', '*', '?', '"', '\'', '<', '>', '|' };
+            var newname = new string(file.Where(c => !invalidLocal.Contains(c) && !invalidWindows.Contains(c)).ToArray());
             newname = newname.TrimStart('.');
 
             if (newname != file)

@@ -7,6 +7,9 @@
     <RootNamespace>PodcastDownloader</RootNamespace>
     <DockerfileRunArguments>-v "C:\temp\feeds:/feeds"</DockerfileRunArguments>
     <Authors>Hans Kesting</Authors>
+    <AssemblyVersion>2.4.0.0</AssemblyVersion>
+    <FileVersion>2.4.0.0</FileVersion>
+    <Version>2.4.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
