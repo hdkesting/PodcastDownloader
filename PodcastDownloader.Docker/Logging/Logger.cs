@@ -12,7 +12,6 @@ namespace PodcastDownloader.Logging
     /// </summary>
     public static class Logger
     {
-        private const string Name = "System";
         private const int MaxEmptyFlushes = 20; // @ 2 secs each (see flushTime)
 
         private static TimeSpan flushTime = TimeSpan.FromSeconds(2);
@@ -22,21 +21,50 @@ namespace PodcastDownloader.Logging
         private static bool stoppedFlushing;
 
         /// <summary>
+        /// Gets the folder that the logs are written to. Set through <see cref="Initialize(DirectoryInfo)"/>.
+        /// </summary>
+        /// <value>
+        /// The log folder.
+        /// </value>
+        public static string LogFolder { get; private set; }
+
+        /// <summary>
+        /// Gets or sets the minimum level to log.
+        /// </summary>
+        /// <value>
+        /// The minimum log level.
+        /// </value>
+        public static LogLevel MinLogLevel { get; set; } = LogLevel.Debug;
+
+        /// <summary>
         /// (Re-)initializes this instance.
         /// </summary>
         /// <param name="basePath">The base path, the "logs" folder will be below this.</param>
         public static void Initialize(DirectoryInfo basePath)
         {
+            if (basePath is null)
+            {
+                throw new ArgumentNullException(nameof(basePath));
+            }
+
+            if (!basePath.Exists)
+            {
+                basePath.Create();
+            }
+
             // initialize, but don't start. Wait for the first message to arrive.
             flushTimer = new System.Threading.Timer(_ => Flusher());
             emptyFlushCount = 0;
             stoppedFlushing = true;
 
+            // if re-initialized, flush old writer
             logWriter?.Flush();
 
-            logWriter = new LogWriter(Path.Combine(basePath.FullName, "logs"));
+            LogFolder = Path.Combine(basePath.FullName, "logs");
+            logWriter = new LogWriter(LogFolder);
 
-            Log(LogLevel.Information, Name, "App startup");
+            Log(LogLevel.Information, nameof(Logger), "App startup");
+            System.Threading.Tasks.Task.Run(() => Cleanup());
         }
 
         /// <summary>
@@ -52,7 +80,7 @@ namespace PodcastDownloader.Logging
         /// </summary>
         public static void Shutdown()
         {
-            Log(LogLevel.Information, Name, "App shutdown");
+            Log(LogLevel.Information, nameof(Logger), "App shutdown");
             flushTimer.Change(-1, -1);
             flushTimer.Dispose();
             logWriter.Flush();
@@ -68,9 +96,28 @@ namespace PodcastDownloader.Logging
         /// <param name="exception">The exception (optional).</param>
         public static void Log(LogLevel level, string pageName, string message, Exception exception = null)
         {
-            var msg = new LogMessage(level, pageName, message, exception);
-            logWriter.Add(msg);
+            if (logWriter == null)
+            {
+                if (string.IsNullOrEmpty(LogFolder))
+                {
+                    // cannot initialize, just forget about it
+                    return;
+                }
 
+                Initialize(new DirectoryInfo(LogFolder));
+            }
+
+            if (level >= MinLogLevel)
+            {
+                var msg = new LogMessage(level, pageName, message, exception);
+                logWriter.Add(msg);
+
+                RestartIfStopped();
+            }
+        }
+
+        private static void RestartIfStopped()
+        {
             lock (logWriter)
             {
                 if (stoppedFlushing)
@@ -79,8 +126,18 @@ namespace PodcastDownloader.Logging
                     stoppedFlushing = false;
                     emptyFlushCount = 0;
                     flushTimer.Change(flushTime, flushTime);
-                    Log(LogLevel.Debug, nameof(Logger), "Resumed log flushing >>>>.");
                 }
+            }
+        }
+
+        private static void PauseFlushing()
+        {
+            lock (logWriter)
+            {
+                flushTimer.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+                logWriter.Flush();
+
+                stoppedFlushing = true;
             }
         }
 
@@ -97,14 +154,7 @@ namespace PodcastDownloader.Logging
                 if (emptyFlushCount > MaxEmptyFlushes)
                 {
                     // lots of empty flushes, so stop timer
-                    lock (logWriter)
-                    {
-                        flushTimer.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
-                        Log(LogLevel.Debug, nameof(Logger), "Paused log flushing <<<<.");
-                        logWriter.Flush();
-
-                        stoppedFlushing = true;
-                    }
+                    PauseFlushing();
                 }
             }
         }

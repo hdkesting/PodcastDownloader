@@ -20,7 +20,7 @@ namespace PodcastDownloader.Logging
         /// <param name="exception">The exception that occurred.</param>
         public LogMessage(LogLevel level, string pageName, string message = null, Exception exception = null)
         {
-            this.TimeStamp = DateTime.Now;
+            this.TimeStamp = DateTime.Now; // just use local time to log
             this.Level = level;
             this.PageName = pageName;
             this.Message = message;
@@ -60,7 +60,7 @@ namespace PodcastDownloader.Logging
         public string Message { get; }
 
         /// <summary>
-        /// Gets the exception.
+        /// Gets the exception, if any.
         /// </summary>
         /// <value>
         /// The exception.

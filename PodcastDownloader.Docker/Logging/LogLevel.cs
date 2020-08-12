@@ -20,12 +20,12 @@ namespace PodcastDownloader.Logging
         Information,
 
         /// <summary>
-        /// A warning.
+        /// A warning that may require attention.
         /// </summary>
         Warning,
 
         /// <summary>
-        /// An error (probably includes exception).
+        /// An error (probably should include exception).
         /// </summary>
         Error,
     }
