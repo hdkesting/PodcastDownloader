@@ -10,15 +10,34 @@ namespace PodcastDownloader.Logging
     /// <summary>
     /// Provides logging to file.
     /// </summary>
-    public static class Logger
+    public class Logger : ILogger
     {
         private const int MaxEmptyFlushes = 20; // @ 2 secs each (see flushTime)
 
-        private static TimeSpan flushTime = TimeSpan.FromSeconds(2);
-        private static LogWriter logWriter;
-        private static System.Threading.Timer flushTimer;
-        private static int emptyFlushCount;
-        private static bool stoppedFlushing;
+        private static LoggingConfig configuration;
+
+        private TimeSpan flushTime = TimeSpan.FromSeconds(2);
+        private LogWriter logWriter;
+        private System.Threading.Timer flushTimer;
+        private int emptyFlushCount;
+        private bool stoppedFlushing;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Logger"/> class.
+        /// </summary>
+        /// <param name="config">The configuration.</param>
+        /// <exception cref="ArgumentNullException">config cannot be null.</exception>
+        public Logger(LoggingConfig config)
+        {
+            if (config is null)
+            {
+                throw new ArgumentNullException(nameof(config));
+            }
+
+            configuration = config;
+            this.MinLogLevel = config.MinLogLevel;
+            this.Initialize(config);
+        }
 
         /// <summary>
         /// Gets the folder that the logs are written to. Set through <see cref="Initialize(DirectoryInfo)"/>.
@@ -26,7 +45,7 @@ namespace PodcastDownloader.Logging
         /// <value>
         /// The log folder.
         /// </value>
-        public static string LogFolder { get; private set; }
+        public string LogFolder { get; private set; }
 
         /// <summary>
         /// Gets or sets the minimum level to log.
@@ -34,57 +53,31 @@ namespace PodcastDownloader.Logging
         /// <value>
         /// The minimum log level.
         /// </value>
-        public static LogLevel MinLogLevel { get; set; } = LogLevel.Debug;
+        public LogLevel MinLogLevel { get; set; } = LogLevel.Debug;
 
         /// <summary>
-        /// (Re-)initializes this instance.
+        /// Gets the path to the current log file.
         /// </summary>
-        /// <param name="basePath">The base path, the "logs" folder will be below this.</param>
-        public static void Initialize(DirectoryInfo basePath)
-        {
-            if (basePath is null)
-            {
-                throw new ArgumentNullException(nameof(basePath));
-            }
-
-            if (!basePath.Exists)
-            {
-                basePath.Create();
-            }
-
-            // initialize, but don't start. Wait for the first message to arrive.
-            flushTimer = new System.Threading.Timer(_ => Flusher());
-            emptyFlushCount = 0;
-            stoppedFlushing = true;
-
-            // if re-initialized, flush old writer
-            logWriter?.Flush();
-
-            LogFolder = Path.Combine(basePath.FullName, "logs");
-            logWriter = new LogWriter(LogFolder);
-
-            Log(LogLevel.Information, nameof(Logger), "App startup");
-            System.Threading.Tasks.Task.Run(() => Cleanup());
-        }
+        public string CurrentLogfilePath => this.logWriter?.CurrentLogfile;
 
         /// <summary>
         /// Cleans up the old logs.
         /// </summary>
-        public static void Cleanup()
+        public void Cleanup()
         {
-            logWriter.Cleanup();
+            this.logWriter.Cleanup();
         }
 
         /// <summary>
         /// Shuts this instance down.
         /// </summary>
-        public static void Shutdown()
+        public void Shutdown()
         {
-            Log(LogLevel.Information, nameof(Logger), "App shutdown");
-            flushTimer.Change(-1, -1);
-            flushTimer.Dispose();
-            logWriter.Flush();
-            logWriter = null;
+            this.Log(LogLevel.Information, nameof(Logger), "App shutdown");
+            this.flushTimer.Change(-1, -1);
+            this.flushTimer.Dispose();
+            this.logWriter.Flush();
+            this.logWriter = null;
         }
 
         /// <summary>
@@ -94,67 +87,87 @@ namespace PodcastDownloader.Logging
         /// <param name="pageName">Name of the page or class.</param>
         /// <param name="message">The message.</param>
         /// <param name="exception">The exception (optional).</param>
-        public static void Log(LogLevel level, string pageName, string message, Exception exception = null)
+        public void Log(LogLevel level, string pageName, string message, Exception exception = null)
         {
-            if (logWriter == null)
+            if (this.logWriter == null)
             {
-                if (string.IsNullOrEmpty(LogFolder))
+                if (configuration is null)
                 {
                     // cannot initialize, just forget about it
                     return;
                 }
 
-                Initialize(new DirectoryInfo(LogFolder));
+                this.Initialize(configuration);
             }
 
-            if (level >= MinLogLevel)
+            if (level >= this.MinLogLevel)
             {
                 var msg = new LogMessage(level, pageName, message, exception);
-                logWriter.Add(msg);
+                this.logWriter.Add(msg);
 
-                RestartIfStopped();
+                this.RestartIfStopped();
             }
         }
 
-        private static void RestartIfStopped()
+        /// <summary>
+        /// (Re-)initializes this instance.
+        /// </summary>
+        /// <param name="config">The configuration.</param>
+        private void Initialize(LoggingConfig config)
         {
-            lock (logWriter)
+            // initialize, but don't start. Wait for the first message to arrive.
+            this.flushTimer = new System.Threading.Timer(_ => this.Flusher());
+            this.emptyFlushCount = 0;
+            this.stoppedFlushing = true;
+
+            // if re-initialized, flush old writer
+            this.logWriter?.Flush();
+
+            this.logWriter = new LogWriter(config);
+
+            Log(LogLevel.Information, nameof(Logger), "App startup");
+            System.Threading.Tasks.Task.Run(() => this.Cleanup());
+        }
+
+        private void RestartIfStopped()
+        {
+            lock (this.logWriter)
             {
-                if (stoppedFlushing)
+                if (this.stoppedFlushing)
                 {
                     // timer was stopped, but a new message arrived, so start up
-                    stoppedFlushing = false;
-                    emptyFlushCount = 0;
-                    flushTimer.Change(flushTime, flushTime);
+                    this.stoppedFlushing = false;
+                    this.emptyFlushCount = 0;
+                    this.flushTimer.Change(this.flushTime, this.flushTime);
                 }
             }
         }
 
-        private static void PauseFlushing()
+        private void PauseFlushing()
         {
-            lock (logWriter)
+            lock (this.logWriter)
             {
-                flushTimer.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
-                logWriter.Flush();
+                this.flushTimer.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+                this.logWriter.Flush();
 
-                stoppedFlushing = true;
+                this.stoppedFlushing = true;
             }
         }
 
-        private static void Flusher()
+        private void Flusher()
         {
-            if (logWriter.Flush())
+            if (this.logWriter.Flush())
             {
-                emptyFlushCount = 0;
+                this.emptyFlushCount = 0;
             }
             else
             {
-                emptyFlushCount++;
+                this.emptyFlushCount++;
 
-                if (emptyFlushCount > MaxEmptyFlushes)
+                if (this.emptyFlushCount > MaxEmptyFlushes)
                 {
                     // lots of empty flushes, so stop timer
-                    PauseFlushing();
+                    this.PauseFlushing();
                 }
             }
         }

@@ -14,24 +14,34 @@ namespace PodcastDownloader.Logging
     /// </summary>
     internal class LogWriter
     {
-        private const string FilePrefix = "pcdl";
-        private const int FilesToKeep = 20;
-
         private readonly Queue<LogMessage> messageQueue = new Queue<LogMessage>();
 
+        private readonly int filesToKeep = 20;
         private readonly string logfilePath;
         private readonly string logFolder;
+        private readonly string filePrefix;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="LogWriter" /> class.
         /// </summary>
-        /// <param name="logFolder">The log folder.</param>
-        public LogWriter(string logFolder)
+        /// <param name="config">The logger configuration.</param>
+        public LogWriter(LoggingConfig config)
         {
-            Directory.CreateDirectory(logFolder);
-            this.logfilePath = Path.Combine(logFolder, $"{FilePrefix}_{DateTime.Today:yyyy-MM-dd}.log");
-            this.logFolder = logFolder;
+            if (config is null)
+            {
+                throw new ArgumentNullException(nameof(config));
+            }
+
+            this.filePrefix = config.LogfilePrefix;
+            this.logFolder = config.LogFolder;
+            Directory.CreateDirectory(this.logFolder);
+            this.logfilePath = Path.Combine(this.logFolder, $"{this.filePrefix}_{DateTime.Today:yyyy-MM-dd}.log.txt");
         }
+
+        /// <summary>
+        /// Gets the path to the current logfile.
+        /// </summary>
+        public string CurrentLogfile => this.logfilePath;
 
         /// <summary>
         /// Adds the specified message to the queue.
@@ -54,9 +64,9 @@ namespace PodcastDownloader.Logging
             {
                 var di = new DirectoryInfo(this.logFolder);
                 var files = di.GetFiles();
-                foreach (var file in files.OrderByDescending(f => f.LastWriteTimeUtc).Skip(FilesToKeep))
+                foreach (var file in files.OrderByDescending(f => f.LastWriteTimeUtc).Skip(this.filesToKeep))
                 {
-                    Logger.Log(LogLevel.Information, nameof(LogWriter), $"Removing old log file: {file}.");
+                    this.Add(new LogMessage(LogLevel.Information, nameof(LogWriter), $"Removing old log file: {file}."));
                     file.Delete();
                 }
             }

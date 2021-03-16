@@ -44,7 +44,7 @@ namespace PodcastDownloader
         {
             if (string.IsNullOrWhiteSpace(this.feed.Url))
             {
-                Logger.Log(LogLevel.Warning, nameof(Downloader), "Skipping because URL is empty.");
+                LoggerSingleton.Value.Log(LogLevel.Warning, nameof(Downloader), "Skipping because URL is empty.");
                 return;
             }
 
@@ -74,7 +74,7 @@ namespace PodcastDownloader
                 }
                 catch (Exception ex)
                 {
-                    Logger.Log(LogLevel.Error, nameof(Downloader), nameof(this.Process), ex);
+                    LoggerSingleton.Value.Log(LogLevel.Error, nameof(Downloader), nameof(this.Process), ex);
                 }
             }
         }
@@ -84,7 +84,7 @@ namespace PodcastDownloader
         /// </summary>
         public void Dispose()
         {
-            Logger.Log(LogLevel.Information, nameof(Downloader), DateTime.Now.ToString(CultureInfo.CurrentCulture) + " " + new string('=', 20));
+            LoggerSingleton.Value.Log(LogLevel.Information, nameof(Downloader), DateTime.Now.ToString(CultureInfo.CurrentCulture) + " " + new string('=', 20));
         }
 
         private async Task ProcessFeed(XmlReader reader)
@@ -169,11 +169,11 @@ namespace PodcastDownloader
 
             if (fi.Exists)
             {
-                Logger.Log(LogLevel.Information, nameof(Downloader), $"File already downloaded: {file}, skipping.");
+                LoggerSingleton.Value.Log(LogLevel.Information, nameof(Downloader), $"File already downloaded: {file}, skipping.");
             }
             else
             {
-                Logger.Log(LogLevel.Information, nameof(Downloader), $"{this.feed.Name}: {file}");
+                LoggerSingleton.Value.Log(LogLevel.Information, nameof(Downloader), $"{this.feed.Name}: {file}");
                 await this.DownloadFileToLocal(linkUri, path, pubdate);
             }
         }
@@ -214,7 +214,7 @@ namespace PodcastDownloader
                     fi.CreationTimeUtc = pubdate.UtcDateTime;
                     fi.LastWriteTimeUtc = pubdate.UtcDateTime;
 
-                    Logger.Log(LogLevel.Debug, nameof(Downloader), $"Downloaded file {targetPath}.");
+                    LoggerSingleton.Value.Log(LogLevel.Debug, nameof(Downloader), $"Downloaded file {targetPath}.");
                 }
             }
             catch (Exception)
@@ -237,7 +237,7 @@ namespace PodcastDownloader
 
             if (newname != file)
             {
-                Logger.Log(LogLevel.Debug, nameof(Downloader), $"Changing '{file}' into '{newname}'.");
+                LoggerSingleton.Value.Log(LogLevel.Debug, nameof(Downloader), $"Changing '{file}' into '{newname}'.");
             }
 
             return newname;

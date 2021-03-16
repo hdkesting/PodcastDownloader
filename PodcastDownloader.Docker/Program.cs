@@ -25,21 +25,33 @@ namespace PodcastDownloader
         /// <returns>A Task.</returns>
         public static async Task Main(string[] args)
         {
+            var logconfig = new Logging.LoggingConfig
+            {
+                LogFolder = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Logs"),
+                LogfilePrefix = "PCDL",
+                FilesToKeep = 20,
+                MinLogLevel = Logging.LogLevel.Debug,
+            };
+
+            LoggerSingleton.Initialize(logconfig);
+
 #if !DEBUG
+            logconfig.MinLogLevel = LogLevel.Information;
+#endif
             while (true)
             {
-#endif
-                Logger.Initialize(LocalPath);
-                Logger.Log(LogLevel.Information, "Main", "Version " + typeof(Program).Assembly.GetName().Version.ToString());
+                LoggerSingleton.Value.Log(LogLevel.Information, "Main", "Version " + typeof(Program).Assembly.GetName().Version.ToString());
 
                 await ProcessConfig(LocalPath);
 
-                Logger.Cleanup();
+                LoggerSingleton.Value.Cleanup();
 
-#if !DEBUG
+#if DEBUG
+                break;
+#else
                 await Task.Delay(TimeSpan.FromHours(12));
-            }
 #endif
+            }
         }
 
         private static async Task ProcessConfig(DirectoryInfo basePath)
@@ -59,7 +71,7 @@ namespace PodcastDownloader
             }
             catch (Exception ex)
             {
-                Logger.Log(LogLevel.Error, nameof(Program), nameof(ProcessConfig), ex);
+                LoggerSingleton.Value.Log(LogLevel.Error, nameof(Program), nameof(ProcessConfig), ex);
             }
             finally
             {
@@ -71,13 +83,13 @@ namespace PodcastDownloader
         {
             try
             {
-                Logger.Log(LogLevel.Information, nameof(Program), $">> Starting on feed '{feed.Name}' from {feed.LatestDownload:yyyy-MM-dd}.");
+                LoggerSingleton.Value.Log(LogLevel.Information, nameof(Program), $">> Starting on feed '{feed.Name}' from {feed.LatestDownload:yyyy-MM-dd}.");
                 using (var dl = new Downloader(feed, basePath))
                 {
                     await dl.Process();
                 }
 
-                Logger.Log(LogLevel.Information, nameof(Program), $"<< Finished feed {feed.Name}. Up to date until {feed.LatestDownload:yyyy-MM-dd}.");
+                LoggerSingleton.Value.Log(LogLevel.Information, nameof(Program), $"<< Finished feed {feed.Name}. Up to date until {feed.LatestDownload:yyyy-MM-dd}.");
 
                 return true;
             }
@@ -85,7 +97,7 @@ namespace PodcastDownloader
             {
                 feed.LatestError = ex.Message;
 
-                Logger.Log(LogLevel.Error, nameof(Program), nameof(ProcessFeed), ex);
+                LoggerSingleton.Value.Log(LogLevel.Error, nameof(Program), nameof(ProcessFeed), ex);
             }
 
             return false;
